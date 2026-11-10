@@ -33,7 +33,7 @@ let highlightGraphic = null;
 
 export async function initMap(containerId = 'viewDiv') {
   map = new Map({
-    basemap: 'hybrid' // Base satelital con vías y nombres
+    basemap: 'satellite' // Base satelital pura (imágenes aéreas de alta resolución)
   });
 
   // Vista centrada de forma óptima: cubre tanto la zona operativa Bouar-Kouki como la totalidad de RCA
@@ -173,14 +173,20 @@ async function loadVectorLayers() {
       const blob = new Blob([JSON.stringify(geojson)], { type: 'application/json' });
       const blobUrl = URL.createObjectURL(blob);
 
-      const layer = new GeoJSONLayer({
+      const layerProps = {
         id: cfg.id,
         title: cfg.title,
         url: blobUrl,
         visible: cfg.visible,
         renderer: cfg.renderer,
         outFields: ['*']
-      });
+      };
+
+      if (cfg.labelingInfo) {
+        layerProps.labelingInfo = cfg.labelingInfo;
+      }
+
+      const layer = new GeoJSONLayer(layerProps);
 
       map.add(layer);
       layerInstances[cfg.id] = layer;
@@ -228,6 +234,42 @@ function setupMapEvents() {
     const layer = graphic.layer;
     const cfg = LAYERS_CONFIG.find(c => c.id === layer.id) || {};
 
+    // Manejo específico para la capa de Aeropuertos: Popup táctico flotante
+    if (layer.id === 'airport') {
+      highlightFeature(graphic.geometry);
+      const geom = graphic.geometry;
+      const lon = geom.longitude !== undefined ? geom.longitude : (geom.x !== undefined ? geom.x : 0);
+      const lat = geom.latitude !== undefined ? geom.latitude : (geom.y !== undefined ? geom.y : 0);
+      const name = graphic.attributes?.Name || 'PISTA NO ESPECIFICADA';
+      const oid = graphic.attributes?.OID || graphic.attributes?.OBJECTID || '-';
+
+      const dmsLon = toDMS(lon, false);
+      const dmsLat = toDMS(lat, true);
+
+      view.openPopup({
+        title: `✈️ AERÓDROMO: ${name}`,
+        location: geom,
+        content: `
+          <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; color: #f1f5f9; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155; line-height: 1.5;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
+              <span style="color: #38bdf8; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Identificador</span>
+              <span style="background: rgba(56, 189, 248, 0.2); color: #7dd3fc; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid rgba(56, 189, 248, 0.4);">ID #${oid}</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 600;">Nombre de Pista / Aeródromo:</div>
+              <div style="color: #ffffff; font-weight: 700; font-size: 14px;">${name}</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #1e293b; border-radius: 6px; padding: 8px;">
+              <div style="color: #94a3b8; font-size: 10px; margin-bottom: 4px; text-transform: uppercase; font-weight: 600;">Coordenadas WGS84:</div>
+              <div style="color: #4ade80; font-weight: 600; font-size: 11px;">DD: ${lat.toFixed(5)}°, ${lon.toFixed(5)}°</div>
+              <div style="color: #cbd5e1; font-size: 11px; margin-top: 2px;">DMS: ${dmsLat}, ${dmsLon}</div>
+            </div>
+          </div>
+        `
+      });
+      return;
+    }
+
     const featureData = {
       properties: graphic.attributes,
       geometry: graphic.geometry,
@@ -238,6 +280,16 @@ function setupMapEvents() {
     highlightFeature(graphic.geometry);
     openMediaDrawer(featureData);
   });
+}
+
+function toDMS(deg, isLat) {
+  const absolute = Math.abs(deg);
+  const degrees = Math.floor(absolute);
+  const minutesNotTruncated = (absolute - degrees) * 60;
+  const minutes = Math.floor(minutesNotTruncated);
+  const seconds = Math.floor((minutesNotTruncated - minutes) * 60);
+  const direction = deg >= 0 ? (isLat ? 'N' : 'E') : (isLat ? 'S' : 'W');
+  return `${degrees}°${minutes}'${seconds}" ${direction}`;
 }
 
 export function highlightFeature(geometry) {

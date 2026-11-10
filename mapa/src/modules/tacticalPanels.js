@@ -12,19 +12,20 @@ let mapInstance = null;
 let viewInstance = null;
 let layerInstancesRef = {};
 let minuscaLayerRef = null;
+let currentBasemapId = 'satellite';
 
 const BASEMAP_OPTIONS = [
   {
-    id: 'hybrid',
-    name: 'Satelital Híbrido',
-    desc: 'Imágenes satelitales globales de alta resolución con nombres y vías',
-    thumb: 'https://www.arcgis.com/sharing/rest/content/items/10df2279f9684e4a9f6a7f08febac2a9/info/thumbnail/thumbnail1584118328636.jpeg'
+    id: 'satellite',
+    name: 'Satelital (Imágenes Puras)',
+    desc: 'Imágenes aéreas puras de alta resolución sin etiquetas superpuestas',
+    thumb: 'https://www.arcgis.com/sharing/rest/content/items/86de95d4e0244cba80f0fa28b1cc2463/info/thumbnail/thumbnail1591224931210.jpeg'
   },
   {
-    id: 'satellite',
-    name: 'Satelital Puro',
-    desc: 'Imágenes aéreas puras sin etiquetas superpuestas',
-    thumb: 'https://www.arcgis.com/sharing/rest/content/items/86de95d4e0244cba80f0fa28b1cc2463/info/thumbnail/thumbnail1591224931210.jpeg'
+    id: 'hybrid',
+    name: 'Satelital Híbrido',
+    desc: 'Imágenes satelitales globales con nombres de lugares y red vial',
+    thumb: 'https://www.arcgis.com/sharing/rest/content/items/10df2279f9684e4a9f6a7f08febac2a9/info/thumbnail/thumbnail1584118328636.jpeg'
   },
   {
     id: 'topo-vector',
@@ -132,11 +133,9 @@ function renderBasemapCards() {
   if (!container) return;
   container.innerHTML = '';
 
-  let currentBasemap = 'hybrid';
-
   BASEMAP_OPTIONS.forEach(bm => {
     const card = document.createElement('div');
-    const isActive = bm.id === currentBasemap;
+    const isActive = bm.id === currentBasemapId;
     card.className = `
       cursor-pointer rounded-xl p-2.5 border transition flex items-center space-x-3
       ${isActive
@@ -158,7 +157,7 @@ function renderBasemapCards() {
     card.addEventListener('click', () => {
       if (mapInstance) {
         mapInstance.basemap = bm.id;
-        currentBasemap = bm.id;
+        currentBasemapId = bm.id;
         renderBasemapCards();
       }
     });

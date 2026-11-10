@@ -232,7 +232,7 @@ function renderCurrentTable() {
     tr.className = 'hover:bg-slate-800/60 cursor-pointer transition';
 
     const codigo = p.CODIGO || p.codigo || `#${index + 1}`;
-    const nombre = p.NOMBRE || p.nombre || p.LUGAR || p.lugar || p.adm1_name || p.adm2_name || '-';
+    const nombre = p.NOMBRE || p.nombre || p.LUGAR || p.lugar || p.Name || p.name || p.adm1_name || p.adm2_name || '-';
     const seccion = p.SECCION || p.seccion || '-';
     const tipo = p.TIPO_TRAB || p.tipo_trab || p.ZONAS || '-';
     const resp = p.RESPONSABLE || p.responsable || '-';

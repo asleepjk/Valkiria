@@ -1,6 +1,6 @@
 /**
  * Configuración de simbología, capas y popups para el Visor Valkiria
- * Réplica fiel de la simbología original (PROYECTO VALKIRIA)
+ * Réplica fiel de la simbología y etiquetado original (PROYECTO VALKIRIA)
  */
 
 export const LAYERS_CONFIG = [
@@ -53,7 +53,22 @@ export const LAYERS_CONFIG = [
           }
         }
       ]
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.ZONAS" },
+        symbol: {
+          type: "text",
+          color: [241, 245, 249, 0.9],
+          haloColor: [15, 23, 42, 0.9],
+          haloSize: 2,
+          font: { family: "Arial, sans-serif", size: 11, weight: "bold" }
+        },
+        labelPlacement: "always-horizontal",
+        minScale: 0,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "rca",
@@ -74,7 +89,22 @@ export const LAYERS_CONFIG = [
           width: 3.0
         }
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.adm0_name" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 0.95],
+          haloColor: [15, 23, 42, 0.95],
+          haloSize: 2.5,
+          font: { family: "Arial, sans-serif", size: 14, weight: "bold" }
+        },
+        labelPlacement: "always-horizontal",
+        minScale: 0,
+        maxScale: 6288990 // Visible a nivel país; oculta al acercarse más de 1:6.28M
+      }
+    ]
   },
   {
     id: "prefectura",
@@ -95,7 +125,22 @@ export const LAYERS_CONFIG = [
           width: 2.0
         }
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.adm1_name" },
+        symbol: {
+          type: "text",
+          color: [254, 240, 138, 0.95],
+          haloColor: [15, 23, 42, 0.95],
+          haloSize: 2,
+          font: { family: "Arial, sans-serif", size: 10, weight: "bold" }
+        },
+        labelPlacement: "always-horizontal",
+        minScale: 4000000,
+        maxScale: 500000 // Visible en rango intermedio regional
+      }
+    ]
   },
   {
     id: "sub_prefectura",
@@ -116,7 +161,22 @@ export const LAYERS_CONFIG = [
           width: 1.2
         }
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.adm2_name" },
+        symbol: {
+          type: "text",
+          color: [134, 239, 172, 0.95],
+          haloColor: [15, 23, 42, 0.95],
+          haloSize: 1.5,
+          font: { family: "Arial, sans-serif", size: 8.5, weight: "normal" }
+        },
+        labelPlacement: "always-horizontal",
+        minScale: 1250000,
+        maxScale: 0 // Visible con zoom detallado
+      }
+    ]
   },
   {
     id: "bouar_aerodromo",
@@ -149,20 +209,34 @@ export const LAYERS_CONFIG = [
     title: "Aeropuertos",
     group: "ELEMENTOS DE INTERES",
     file: "data/layers/airport.geojson",
-    visible: false,
+    visible: true,
     isFeature: true,
     layerType: "point",
     category: "INTERES",
     renderer: {
       type: "simple",
       symbol: {
-        type: "simple-marker",
-        style: "circle",
-        color: [59, 130, 246, 0.9],
-        size: 7,
-        outline: { color: [255, 255, 255, 1], width: 1.5 }
+        type: "picture-marker",
+        url: "symbols/airport_marker_halo.png",
+        width: "32px",
+        height: "32px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.Name" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [15, 23, 42, 0.95],
+          haloSize: 1.5,
+          font: { family: "Arial Narrow, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-center",
+        minScale: 3000000,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "adminpoint",
@@ -182,7 +256,22 @@ export const LAYERS_CONFIG = [
         size: 7,
         outline: { color: [255, 255, 255, 1], width: 1 }
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.Name" },
+        symbol: {
+          type: "text",
+          color: [251, 146, 60, 0.95],
+          haloColor: [15, 23, 42, 0.95],
+          haloSize: 1.5,
+          font: { family: "Arial Narrow, sans-serif", size: 8.5, weight: "normal" }
+        },
+        labelPlacement: "above-right",
+        minScale: 2000000,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "sabewa",
@@ -201,7 +290,22 @@ export const LAYERS_CONFIG = [
         width: "26px",
         height: "26px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.Sector" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [124, 45, 18, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "bouar",
@@ -220,7 +324,22 @@ export const LAYERS_CONFIG = [
         width: "26px",
         height: "26px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.Sector" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [124, 45, 18, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "peouri_besson",
@@ -239,7 +358,22 @@ export const LAYERS_CONFIG = [
         width: "26px",
         height: "26px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.Sector" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [124, 45, 18, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "benzambe",
@@ -258,7 +392,22 @@ export const LAYERS_CONFIG = [
         width: "26px",
         height: "26px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.LUGAR" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [124, 45, 18, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "kouki",
@@ -277,7 +426,22 @@ export const LAYERS_CONFIG = [
         width: "26px",
         height: "26px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.LUGAR" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [124, 45, 18, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "ing",
@@ -296,7 +460,22 @@ export const LAYERS_CONFIG = [
         width: "28px",
         height: "28px"
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.NOMBRE" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [30, 58, 138, 0.95],
+          haloSize: 1.5,
+          font: { family: "Tahoma, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   },
   {
     id: "live_submissions",
@@ -319,7 +498,22 @@ export const LAYERS_CONFIG = [
           width: 2.5
         }
       }
-    }
+    },
+    labelingInfo: [
+      {
+        labelExpressionInfo: { expression: "$feature.titulo" },
+        symbol: {
+          type: "text",
+          color: [255, 255, 255, 1],
+          haloColor: [153, 27, 27, 0.95],
+          haloSize: 1.5,
+          font: { family: "Arial, sans-serif", size: 9, weight: "bold" }
+        },
+        labelPlacement: "above-right",
+        minScale: 6288996,
+        maxScale: 0
+      }
+    ]
   }
 ];
 

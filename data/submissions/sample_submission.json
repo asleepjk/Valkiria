@@ -1,0 +1,21 @@
+{
+  "id": "SUB-20261110-01",
+  "codigo": "ING-03",
+  "lugar": "Baoro",
+  "nombre": "Puente Baoro",
+  "seccion": "CIA - Ingenieria",
+  "tipo_trab": "Reconstrucción y refuerzo",
+  "task_order": "TO-2026-088",
+  "responsable": "Tte. Perez",
+  "descripcion": "Inspección y refuerzo estructural del puente vehicular sobre el río Baoro para paso de convoyes de la misión.",
+  "recursos": "- 01 Grúa de auxilio - Personal especialista zapadores - Pernos y vigas H",
+  "f_inicio": "10/11/2026",
+  "f_termino": "25/11/2026",
+  "coordinates": [15.9667, 5.6667],
+  "foto": "Bouar1.jpeg",
+  "foto_2": null,
+  "video": "Bouar3.mp4",
+  "obs": "Tránsito restringido a un solo carril durante los trabajos",
+  "origen": "Reporte de Campo",
+  "fecha_envio": "2026-11-10T10:30:00Z"
+}

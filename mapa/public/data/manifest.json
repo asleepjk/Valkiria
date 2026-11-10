@@ -1,0 +1,278 @@
+{
+  "layers": [
+    {
+      "id": "ing",
+      "name": "ING",
+      "longName": "TRABAJOS REALIZADOS\\INGENIERIA\\ING",
+      "file": "data/layers/ing.geojson",
+      "visible": true,
+      "count": 2,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/ing_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "bouar_aerodromo",
+      "name": "Bouar_Aerodromo",
+      "longName": "TRABAJOS REALIZADOS\\INGENIERIA\\Bouar_Aerodromo",
+      "file": "data/layers/bouar_aerodromo.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Polygon",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPolygonSymbol",
+      "stroke": {
+        "color": [
+          255,
+          0,
+          0,
+          100
+        ],
+        "width": 2
+      },
+      "hatchFill": true
+    },
+    {
+      "id": "kouki",
+      "name": "Kouki",
+      "longName": "TRABAJOS REALIZADOS\\EOD\\Kouki",
+      "file": "data/layers/kouki.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/kouki_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "benzambe",
+      "name": "Benzambe",
+      "longName": "TRABAJOS REALIZADOS\\EOD\\Benzambe",
+      "file": "data/layers/benzambe.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/benzambe_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "sabewa",
+      "name": "Sabewa",
+      "longName": "TRABAJOS REALIZADOS\\EOD\\Sabewa",
+      "file": "data/layers/sabewa.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/sabewa_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "bouar",
+      "name": "Bouar",
+      "longName": "TRABAJOS REALIZADOS\\EOD\\Bouar",
+      "file": "data/layers/bouar.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/bouar_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "peouri_besson",
+      "name": "Peouri_Besson",
+      "longName": "TRABAJOS REALIZADOS\\EOD\\Peouri_Besson",
+      "file": "data/layers/peouri_besson.geojson",
+      "visible": true,
+      "count": 2,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol",
+      "icon": "symbols/peouri_besson_marker.png",
+      "iconSize": 15
+    },
+    {
+      "id": "rca",
+      "name": "RCA",
+      "longName": "LIMITES ADMINISTRATIVOS\\RCA",
+      "file": "data/layers/rca.geojson",
+      "visible": true,
+      "count": 1,
+      "geometryType": "Polygon",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPolygonSymbol",
+      "stroke": {
+        "color": [
+          255,
+          0,
+          197,
+          100
+        ],
+        "width": 3
+      }
+    },
+    {
+      "id": "prefectura",
+      "name": "Prefectura",
+      "longName": "LIMITES ADMINISTRATIVOS\\Prefectura",
+      "file": "data/layers/prefectura.geojson",
+      "visible": true,
+      "count": 20,
+      "geometryType": "Polygon",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPolygonSymbol",
+      "stroke": {
+        "color": [
+          255,
+          255,
+          0,
+          100
+        ],
+        "width": 2
+      }
+    },
+    {
+      "id": "sub_prefectura",
+      "name": "Sub_Prefectura",
+      "longName": "LIMITES ADMINISTRATIVOS\\Sub_Prefectura",
+      "file": "data/layers/sub_prefectura.geojson",
+      "visible": true,
+      "count": 85,
+      "geometryType": "Polygon",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPolygonSymbol",
+      "stroke": {
+        "color": [
+          76,
+          230,
+          0,
+          100
+        ],
+        "width": 1
+      }
+    },
+    {
+      "id": "airport",
+      "name": "Airport",
+      "longName": "ELEMENTOS DE INTERES\\Airport",
+      "file": "data/layers/airport.geojson",
+      "visible": false,
+      "count": 38,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol"
+    },
+    {
+      "id": "adminpoint",
+      "name": "Adminpoint",
+      "longName": "ELEMENTOS DE INTERES\\Adminpoint",
+      "file": "data/layers/adminpoint.geojson",
+      "visible": false,
+      "count": 75,
+      "geometryType": "Point",
+      "rendererType": "CIMSimpleRenderer",
+      "symbolType": "CIMPointSymbol"
+    },
+    {
+      "id": "zonas",
+      "name": "Zonas",
+      "longName": "ELEMENTOS DE INTERES\\Zonas",
+      "file": "data/layers/zonas.geojson",
+      "visible": true,
+      "count": 3,
+      "geometryType": "Polygon",
+      "rendererType": "CIMUniqueValueRenderer",
+      "fields": [
+        "ZONAS"
+      ],
+      "classes": [
+        {
+          "label": "CENTER",
+          "value": "CENTER",
+          "stroke": {
+            "color": [
+              0,
+              0,
+              0,
+              100
+            ],
+            "width": 2
+          },
+          "fill": {
+            "color": [
+              255,
+              235,
+              190,
+              100
+            ]
+          }
+        },
+        {
+          "label": "EAST",
+          "value": "EAST",
+          "stroke": {
+            "color": [
+              0,
+              0,
+              0,
+              100
+            ],
+            "width": 2
+          },
+          "fill": {
+            "color": [
+              190,
+              210,
+              255,
+              100
+            ]
+          }
+        },
+        {
+          "label": "WEST",
+          "value": "WEST",
+          "stroke": {
+            "color": [
+              0,
+              0,
+              0,
+              100
+            ],
+            "width": 2
+          },
+          "fill": {
+            "color": [
+              232,
+              190,
+              255,
+              100
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "raster": {
+    "id": "minusca",
+    "name": "MINUSCA",
+    "file": "data/rasters/minusca.png",
+    "extent": {
+      "xmin": 12.0797893824399,
+      "ymin": -0.0656952619086617,
+      "xmax": 29.742398517321995,
+      "ymax": 13.667457656027116
+    },
+    "spatialReference": 4326,
+    "visible": false,
+    "opacity": 0.85
+  },
+  "symbols": {}
+}

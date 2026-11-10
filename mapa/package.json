@@ -1,0 +1,17 @@
+{
+  "name": "valkiria-visor-web",
+  "version": "1.0.0",
+  "description": "Visor Cartográfico Web Proyecto Valkiria con ArcGIS Maps SDK for JavaScript y sincronización de reportes",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host --port 3000",
+    "build": "vite build",
+    "preview": "vite preview --host --port 3000"
+  },
+  "keywords": ["arcgis", "gis", "valkiria", "github-pages", "geojson", "maps-sdk"],
+  "author": "Valkiria Project Team",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

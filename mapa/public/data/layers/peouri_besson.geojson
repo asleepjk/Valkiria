@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","id":1,"geometry":{"type":"Point","coordinates":[14.815833333000057,6.2625000000000455]},"properties":{"OBJECTID":1,"Sector":"Besson","Seccion":"EOD"}},{"type":"Feature","id":2,"geometry":{"type":"Point","coordinates":[14.839090288000023,5.9425406560000624]},"properties":{"OBJECTID":2,"Sector":"Peouri","Seccion":"EOD"}}]}

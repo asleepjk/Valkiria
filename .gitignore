@@ -1,0 +1,14 @@
+# Binary GIS Packages & GDBs
+*.mpk
+*.aprx
+*.mxd
+*.gdb/
+
+# Node
+node_modules/
+dist/
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log

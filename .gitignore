@@ -8,6 +8,14 @@
 node_modules/
 dist/
 
+# Flutter & Mobile
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/build/
+*.apk
+*.aab
+
 # OS & Logs
 .DS_Store
 Thumbs.db

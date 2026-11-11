@@ -26,6 +26,12 @@ export function resolvePhotoUrl(filename) {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
     return trimmed;
   }
+  if (trimmed.startsWith('fotos/')) {
+    return `https://www.idep.gob.pe/seguimiento/api/${trimmed}`;
+  }
+  if (trimmed.startsWith('VAL-')) {
+    return `https://www.idep.gob.pe/seguimiento/api/fotos/${trimmed}`;
+  }
   const key = trimmed.toLowerCase();
   if (KNOWN_PHOTOS[key]) {
     return KNOWN_PHOTOS[key];

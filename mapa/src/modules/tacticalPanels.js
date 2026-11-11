@@ -53,7 +53,7 @@ const BASEMAP_OPTIONS = [
   }
 ];
 
-export function initTacticalPanels({ map, view, layerInstances, minuscaLayer, onMinuscaZoom }) {
+export function initTacticalPanels({ map, view, layerInstances, minuscaLayer, onMinuscaZoom, onFieldReportsZoom }) {
   mapInstance = map;
   viewInstance = view;
   layerInstancesRef = layerInstances;
@@ -61,7 +61,7 @@ export function initTacticalPanels({ map, view, layerInstances, minuscaLayer, on
 
   setupTopBarButtons(onMinuscaZoom);
   renderBasemapCards();
-  renderLayersList(onMinuscaZoom);
+  renderLayersList(onMinuscaZoom, onFieldReportsZoom);
   renderLegendItems();
   // NOTA: Se eliminó el cierre automático al hacer clic o navegar en el mapa para permitir trabajo continuo
 }
@@ -169,7 +169,7 @@ function renderBasemapCards() {
 // ==========================================
 // 2. RENDERIZADO DE LISTA DE CAPAS (CON MINUSCA)
 // ==========================================
-function renderLayersList(onMinuscaZoom) {
+function renderLayersList(onMinuscaZoom, onFieldReportsZoom) {
   const container = document.getElementById('layers-tree');
   if (!container) return;
   container.innerHTML = '';
@@ -271,6 +271,19 @@ function renderLayersList(onMinuscaZoom) {
         previewIcon = `<span class="w-3 h-3 rounded-full bg-sky-400 inline-block mr-1.5"></span>`;
       }
 
+      let actionBtnHtml = '';
+      if (cfg.id === 'live_submissions') {
+        actionBtnHtml = `
+          <button type="button" class="field-reports-zoom-btn text-[10px] px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-500/40 hover:bg-rose-900 transition flex items-center space-x-1 flex-shrink-0 ml-1" title="Centrar mapa en los puntos de campo de Valkiria">
+            <svg class="w-3 h-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            <span>Ver Puntos</span>
+          </button>
+        `;
+      }
+
       row.innerHTML = `
         <label class="flex items-center space-x-2 cursor-pointer flex-1 truncate select-none">
           <input type="checkbox" data-layer-id="${cfg.id}" ${isVisible ? 'checked' : ''} class="w-3.5 h-3.5 text-sky-500 rounded bg-slate-800 border-slate-600 focus:ring-sky-500 cursor-pointer" />
@@ -279,7 +292,18 @@ function renderLayersList(onMinuscaZoom) {
             <span class="text-slate-200 truncate">${cfg.title}</span>
           </div>
         </label>
+        ${actionBtnHtml}
       `;
+
+      if (cfg.id === 'live_submissions') {
+        const zoomBtn = row.querySelector('.field-reports-zoom-btn');
+        if (zoomBtn) {
+          zoomBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (onFieldReportsZoom) onFieldReportsZoom();
+          });
+        }
+      }
 
       const chk = row.querySelector('input');
       chk.addEventListener('change', () => {

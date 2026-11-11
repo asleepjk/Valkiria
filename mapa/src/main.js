@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 4. Inicializar Motor Cartográfico con ArcGIS Maps SDK
-  const { map, view, layerInstances, minuscaLayer } = await initMap('viewDiv');
+  const { map, view, layerInstances, minuscaLayer, zoomToFieldReports } = await initMap('viewDiv');
 
   // 5. Inicializar Paneles Tácticos Superiores (Capas, Mapas Base, Leyenda, Fechas)
   initTacticalPanels({
@@ -40,7 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     view,
     layerInstances,
     minuscaLayer,
-    onMinuscaZoom: () => zoomToMinusca()
+    onMinuscaZoom: () => zoomToMinusca(),
+    onFieldReportsZoom: () => zoomToFieldReports()
   });
 
   // 6. Inicializar Ingesta de Reportes

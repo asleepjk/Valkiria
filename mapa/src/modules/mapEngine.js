@@ -73,6 +73,7 @@ export async function initMap(containerId = 'viewDiv') {
     visible: true
   });
   map.add(liveGraphicsLayer);
+  layerInstances['live_submissions'] = liveGraphicsLayer;
 
   // 5. Capa para highlight de selección
   highlightGraphic = new GraphicsLayer({
@@ -89,7 +90,8 @@ export async function initMap(containerId = 'viewDiv') {
     view,
     layerInstances,
     minuscaLayer: minuscaLayerInstance,
-    zoomToMinusca
+    zoomToMinusca,
+    zoomToFieldReports
   };
 }
 
@@ -356,7 +358,41 @@ export function applyDateFilter() {
     updateTableData(layerId, filtered, cfg ? cfg.title : layerId);
 
     const layer = layerInstances[layerId];
-    if (layer) {
+    if (layerId === 'live_submissions' && liveGraphicsLayer) {
+      liveGraphicsLayer.removeAll();
+      filtered.forEach(feat => {
+        const p = feat.properties || {};
+        const coords = feat.geometry && feat.geometry.coordinates ? feat.geometry.coordinates : null;
+        if (!coords) return;
+        const [lon, lat] = coords;
+        const geom = new Point({ longitude: lon, latitude: lat });
+        const marker = new Graphic({
+          geometry: geom,
+          symbol: {
+            type: 'simple-marker',
+            style: 'circle',
+            color: [239, 68, 68, 0.95],
+            size: 18,
+            outline: { color: [255, 255, 255, 1], width: 2.5 }
+          },
+          attributes: p
+        });
+        const label = new Graphic({
+          geometry: geom,
+          symbol: {
+            type: 'text',
+            color: [255, 255, 255, 1],
+            haloColor: [153, 27, 27, 0.95],
+            haloSize: 2,
+            text: p.LUGAR || p.CODIGO || 'Punto Valkiria',
+            font: { size: 10, weight: 'bold', family: 'Arial, sans-serif' },
+            yoffset: 15
+          },
+          attributes: p
+        });
+        liveGraphicsLayer.addMany([marker, label]);
+      });
+    } else if (layer && typeof layer.refresh === 'function') {
       const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features: filtered })], { type: 'application/json' });
       layer.url = URL.createObjectURL(blob);
       layer.refresh();
@@ -374,41 +410,66 @@ export function addSubmissionToMap(submission) {
     type: 'simple-marker',
     style: 'circle',
     color: [239, 68, 68, 0.95],
-    size: 16,
+    size: 18,
     outline: {
       color: [255, 255, 255, 1],
       width: 2.5
     }
   };
 
-  const graphic = new Graphic({
+  const attributes = {
+    CODIGO: submission.codigo || submission.id,
+    NOMBRE: submission.nombre,
+    LUGAR: submission.lugar,
+    SECCION: submission.seccion || 'Reporte de Campo',
+    TIPO_TRAB: submission.tipo_trab,
+    TASK_ORDER: submission.task_order,
+    RESPONSABLE: submission.responsable,
+    DESCRIPCION: submission.descripcion,
+    RECURSOS: submission.recursos,
+    F_INICIO: submission.f_inicio,
+    F_TERMINO: submission.f_termino,
+    FOTO: submission.foto,
+    FOTO_2: submission.foto_2,
+    VIDEO: submission.video,
+    JEFE_TOB: submission.jefe_tob,
+    TELEFONO: submission.telefono,
+    PERSONAL: submission.personal,
+    MAQUINARIA: submission.maquinaria,
+    OCURRENCIAS: submission.ocurrencias,
+    ALTITUD: submission.altitud,
+    PRECISION_M: submission.precision_m,
+    DMS: submission.dms,
+    FECHA: submission.fecha_envio,
+    fecha_envio: submission.fecha_envio || new Date().toISOString()
+  };
+
+  const markerGraphic = new Graphic({
     geometry: geom,
     symbol: symbol,
-    attributes: {
-      CODIGO: submission.codigo || submission.id,
-      NOMBRE: submission.nombre,
-      LUGAR: submission.lugar,
-      SECCION: submission.seccion || 'Reporte de Campo',
-      TIPO_TRAB: submission.tipo_trab,
-      TASK_ORDER: submission.task_order,
-      RESPONSABLE: submission.responsable,
-      DESCRIPCION: submission.descripcion,
-      RECURSOS: submission.recursos,
-      F_INICIO: submission.f_inicio,
-      F_TERMINO: submission.f_termino,
-      FOTO: submission.foto,
-      FOTO_2: submission.foto_2,
-      VIDEO: submission.video,
-      fecha_envio: submission.fecha_envio || new Date().toISOString()
-    }
+    attributes: attributes
   });
 
-  liveGraphicsLayer.add(graphic);
+  const labelGraphic = new Graphic({
+    geometry: geom,
+    symbol: {
+      type: 'text',
+      color: [255, 255, 255, 1],
+      haloColor: [153, 27, 27, 0.95],
+      haloSize: 2,
+      text: submission.lugar || submission.codigo || 'Punto Valkiria',
+      font: { size: 10, weight: 'bold', family: 'Arial, sans-serif' },
+      yoffset: 15
+    },
+    attributes: attributes
+  });
+
+  liveGraphicsLayer.addMany([markerGraphic, labelGraphic]);
 
   const liveFeature = {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [lon, lat] },
-    properties: graphic.attributes,
+    properties: attributes,
     category: 'REPORTE DE CAMPO'
   };
 
@@ -417,5 +478,46 @@ export function addSubmissionToMap(submission) {
   rawGeojsonStore['live_submissions'] = currentLive;
   updateTableData('live_submissions', currentLive.features, 'Reportes de Campo');
 
-  return graphic;
+  return markerGraphic;
+}
+
+export function zoomToFieldReports() {
+  if (!view || !liveGraphicsLayer || liveGraphicsLayer.graphics.length === 0) return false;
+
+  const pointGraphics = liveGraphicsLayer.graphics.filter(g => g.geometry && g.geometry.type === 'point');
+  if (pointGraphics.length === 0) return false;
+
+  const markers = pointGraphics.filter(g => g.symbol && g.symbol.type === 'simple-marker');
+  const targets = markers.length > 0 ? markers : pointGraphics;
+
+  if (targets.length === 1) {
+    view.goTo({ target: targets.getItemAt(0).geometry, zoom: 16 }, { duration: 1000 });
+    return true;
+  }
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  targets.forEach(g => {
+    const lon = g.geometry.longitude !== undefined ? g.geometry.longitude : g.geometry.x;
+    const lat = g.geometry.latitude !== undefined ? g.geometry.latitude : g.geometry.y;
+    if (lon < minX) minX = lon;
+    if (lon > maxX) maxX = lon;
+    if (lat < minY) minY = lat;
+    if (lat > maxY) maxY = lat;
+  });
+
+  if (Math.abs(maxX - minX) < 0.0002 && Math.abs(maxY - minY) < 0.0002) {
+    view.goTo({ target: targets.getItemAt(0).geometry, zoom: 16 }, { duration: 1000 });
+    return true;
+  }
+
+  const ext = new Extent({
+    xmin: minX,
+    ymin: minY,
+    xmax: maxX,
+    ymax: maxY,
+    spatialReference: { wkid: 4326 }
+  });
+
+  view.goTo(ext.expand(1.6), { duration: 1000 });
+  return true;
 }

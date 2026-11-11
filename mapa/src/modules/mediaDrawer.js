@@ -250,17 +250,22 @@ export function openMediaDrawer(featureData) {
   const displayFields = [
     { label: 'Código', val: props.CODIGO || props.codigo },
     { label: 'Lugar / Sector', val: props.LUGAR || props.lugar || props.adm1_name || props.adm2_name },
+    { label: 'Jefe de TOB', val: props.JEFE_TOB || props.jefe_tob },
+    { label: 'Teléfono', val: props.TELEFONO || props.telefono },
+    { label: 'Personal', val: props.PERSONAL || props.personal },
+    { label: 'Maquinaria', val: props.MAQUINARIA || props.maquinaria },
+    { label: 'Ocurrencias', val: props.OCURRENCIAS || props.ocurrencias },
     { label: 'Nombre Operativo', val: props.NOMBRE || props.nombre },
     { label: 'Sección', val: props.SECCION || props.seccion },
     { label: 'Tipo de Trabajo', val: props.TIPO_TRAB || props.tipo_trab },
     { label: 'Task Order', val: props.TASK_ORDER || props.task_order },
     { label: 'Responsable', val: props.RESPONSABLE || props.responsable },
-    { label: 'Fecha Inicio', val: props.F_INICIO || props.f_inicio },
-    { label: 'Fecha Término', val: props.F_TERMINO || props.f_termino },
-    { label: 'Recursos', val: props.RECURSOS || props.recursos },
+    { label: 'Altitud', val: props.ALTITUD ? `${Math.round(props.ALTITUD)} m s.n.m.` : null },
+    { label: 'Precisión GPS', val: props.PRECISION_M ? `±${Number(props.PRECISION_M).toFixed(1)} m` : null },
+    { label: 'Coordenadas DMS', val: props.DMS || props.dms },
+    { label: 'Fecha de Registro', val: props.FECHA || props.fecha_envio },
     { label: 'Descripción', val: props.DESCRIPCION || props.descripcion },
-    { label: 'Observaciones', val: props.OBS || props.obs },
-    { label: 'Fecha de Registro', val: props.fecha_envio }
+    { label: 'Observaciones', val: props.OBS || props.obs }
   ];
 
   displayFields.filter(f => f.val !== undefined && f.val !== null && String(f.val).trim() !== '').forEach(item => {

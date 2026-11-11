@@ -3,22 +3,83 @@
  * Lee reportes dinámicos de data/submissions/
  */
 
-import { addSubmissionToMap } from './mapEngine.js';
+import { addSubmissionToMap, zoomToFieldReports } from './mapEngine.js';
 
 export async function initLiveIngestion() {
-  // 1. Cargar submissions iniciales
+  // 1. Cargar puntos sincronizados en tiempo real (IDEP Producción o fallback local)
+  let loadedFromLive = false;
+  let count = 0;
+
   try {
-    const res = await fetch('data/submissions/sample_submission.json');
-    if (res.ok) {
-      const sample = await res.json();
-      addSubmissionToMap(sample);
+    const resGeo = await fetch('https://www.idep.gob.pe/seguimiento/api/puntos.php?t=' + Date.now());
+    if (resGeo.ok) {
+      const geoData = await resGeo.json();
+      if (geoData.features && geoData.features.length > 0) {
+        ingestFeaturesList(geoData.features, 'Valkiria Móvil (Producción)');
+        loadedFromLive = true;
+        count = geoData.features.length;
+      }
     }
   } catch (e) {
-    console.log('No se encontraron reportes previos en data/submissions/', e);
+    console.log('No se pudo conectar al endpoint en vivo de IDEP', e);
+  }
+
+  // Si no cargó del live, cargar desde el archivo local valkiria_campo.geojson
+  if (!loadedFromLive) {
+    try {
+      const resLocal = await fetch('data/layers/valkiria_campo.geojson?t=' + Date.now());
+      if (resLocal.ok) {
+        const geoData = await resLocal.json();
+        if (geoData.features && geoData.features.length > 0) {
+          ingestFeaturesList(geoData.features, 'Valkiria APK (Local)');
+          count = geoData.features.length;
+        }
+      }
+    } catch (e) {
+      console.log('No se encontraron puntos previos en valkiria_campo.geojson', e);
+    }
+  }
+
+  // Si se detectaron puntos de campo sincronizados, alertar al operador con acceso directo
+  if (count > 0) {
+    showToastWithAction(
+      `✓ ${count} reporte(s) de Valkiria sincronizados`,
+      'Ver en Mapa',
+      () => zoomToFieldReports()
+    );
   }
 
   // 2. Crear modal de simulación de envío para pruebas en localhost
   createSimulatorModalDOM();
+}
+
+function ingestFeaturesList(features, origenLabel) {
+  features.forEach(f => {
+    const p = f.properties || {};
+    addSubmissionToMap({
+      id: p.CODIGO,
+      codigo: p.CODIGO,
+      lugar: p.LUGAR || 'Punto de Misión',
+      nombre: `${p.JEFE_TOB || 'TOB'} - ${p.PERSONAL || 'Personal'}`,
+      seccion: `TOB: ${p.JEFE_TOB || 'Sin asignar'} | Tel: ${p.TELEFONO || 'S/N'}`,
+      tipo_trab: p.MAQUINARIA || 'Operativo',
+      responsable: p.JEFE_TOB,
+      descripcion: p.OCURRENCIAS || '',
+      coordinates: f.geometry.coordinates,
+      foto: p.FOTO || null,
+      f_inicio: p.FECHA ? p.FECHA.split(' ')[0] : '',
+      origen: origenLabel,
+      fecha_envio: p.FECHA,
+      jefe_tob: p.JEFE_TOB,
+      telefono: p.TELEFONO,
+      personal: p.PERSONAL,
+      maquinaria: p.MAQUINARIA,
+      ocurrencias: p.OCURRENCIAS,
+      altitud: p.ALTITUD,
+      precision_m: p.PRECISION_M,
+      dms: p.DMS
+    });
+  });
 }
 
 function createSimulatorModalDOM() {
@@ -185,4 +246,36 @@ function showToast(msg) {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+function showToastWithAction(msg, actionText, actionCallback) {
+  const toast = document.createElement('div');
+  toast.className = `
+    fixed top-20 right-5 z-[80] bg-slate-900 border border-emerald-500/60 text-white px-4 py-2.5 rounded-xl shadow-2xl
+    text-xs font-semibold flex items-center space-x-3 shadow-emerald-950/50 backdrop-blur-md
+  `;
+  toast.innerHTML = `
+    <span class="flex items-center space-x-1.5 text-emerald-400">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span>${msg}</span>
+    </span>
+    <button class="toast-action-btn px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition shadow-sm">
+      ${actionText}
+    </button>
+    <button class="toast-close-btn text-slate-400 hover:text-white text-xs pl-1">✕</button>
+  `;
+
+  const btn = toast.querySelector('.toast-action-btn');
+  btn.addEventListener('click', () => {
+    if (actionCallback) actionCallback();
+    toast.remove();
+  });
+
+  const closeBtn = toast.querySelector('.toast-close-btn');
+  closeBtn.addEventListener('click', () => toast.remove());
+
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    if (document.body.contains(toast)) toast.remove();
+  }, 10000);
 }

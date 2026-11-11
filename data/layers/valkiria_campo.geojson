@@ -1,47 +1,5 @@
 ﻿{
+  "type": "FeatureCollection",
   "name": "valkiria_campo",
-  "features": [
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-77.0168611, -12.1026083]
-      },
-      "properties": {
-        "CODIGO": "VAL-20261111-6F57",
-        "JEFE_TOB": "picha",
-        "TELEFONO": "6666666",
-        "LUGAR": "base pelancho",
-        "PERSONAL": "6 pelanchitos",
-        "MAQUINARIA": "12 volquetes",
-        "OCURRENCIAS": "scooby no trabaja",
-        "FOTO": "https://www.idep.gob.pe/seguimiento/api/foto.php?id=VAL-20261111-6F57",
-        "ALTITUD": 154.0,
-        "PRECISION_M": 21.9,
-        "DMS": "12°06'09\"S 077°01'01\"W",
-        "FECHA": "2026-11-11 12:23:59"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-77.0168918, -12.102602]
-      },
-      "properties": {
-        "CODIGO": "VAL-20261111-F401",
-        "JEFE_TOB": "Picha",
-        "TELEFONO": "478888",
-        "LUGAR": "Casa de scooby",
-        "PERSONAL": "7 personal",
-        "MAQUINARIA": "5 volquetes",
-        "OCURRENCIAS": "scooby sigue sin trabajar",
-        "FOTO": "https://www.idep.gob.pe/seguimiento/api/foto.php?id=VAL-20261111-F401",
-        "ALTITUD": 154.0,
-        "PRECISION_M": 20.5,
-        "DMS": "12°06'09\"S 077°01'01\"W",
-        "FECHA": "2026-11-11 12:23:58"
-      }
-    }
-  ]
+  "features": []
 }

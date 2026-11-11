@@ -271,8 +271,23 @@ function setupMapEvents() {
       const layerId = layer ? layer.id : '';
       const cfg = LAYERS_CONFIG.find(c => c.id === layerId) || {};
 
+      let props = graphic.attributes || {};
+      const rawStore = rawGeojsonStore[layerId];
+      if (rawStore && rawStore.features) {
+        const found = rawStore.features.find(f => {
+          const fp = f.properties || {};
+          return (props.OBJECTID !== undefined && fp.OBJECTID === props.OBJECTID) ||
+                 (props.CODIGO && fp.CODIGO === props.CODIGO) ||
+                 (props.id && fp.id === props.id) ||
+                 (props.NOMBRE && fp.NOMBRE === props.NOMBRE);
+        });
+        if (found && found.properties) {
+          props = { ...found.properties, ...props };
+        }
+      }
+
       const featureData = {
-        properties: graphic.attributes || {},
+        properties: props,
         geometry: graphic.geometry,
         category: cfg.category || (graphic.geometry && graphic.geometry.type === 'point' ? 'PUNTO OPERATIVO' : 'POLÍGONO'),
         layerId: layerId

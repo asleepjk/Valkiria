@@ -5,8 +5,8 @@
  */
 
 import { requireAuth, showAuthToast } from './authManager.js';
-import { resolvePhotoUrl } from './assetResolver.js';
-import { openLightbox } from './mediaDrawer.js';
+import { resolvePhotoUrl, resolveVideoUrl } from './assetResolver.js';
+import { openLightbox, openMediaDrawer } from './mediaDrawer.js';
 
 const SYNC_API_URL = 'https://www.idep.gob.pe/seguimiento/api/sync.php';
 
@@ -203,8 +203,17 @@ function renderGenericContent(container, featureData, { onClose } = {}) {
   const cat = featureData.category || 'ELEMENTO';
   const title = p.NOMBRE || p.nombre || p.LUGAR || p.Name || p.adm1_name || p.adm2_name || 'Geometría';
 
+  // Multimedia (Fotografías y Video)
+  const photoFields = [p.FOTO, p.foto, p.FOTO_2, p.foto_2].filter(Boolean);
+  const resolvedPhotos = photoFields.map(f => resolvePhotoUrl(f)).filter(Boolean);
+  const rawVideo = p.VIDEO || p.video;
+  const videoUrl = resolveVideoUrl(rawVideo);
+
   let rowsHtml = '';
-  const ignoredKeys = ['OBJECTID', 'FID', 'Shape__Area', 'Shape__Length', 'CODIGO', 'NOMBRE', 'LUGAR', 'category', 'layerId'];
+  const ignoredKeys = [
+    'OBJECTID', 'FID', 'Shape__Area', 'Shape__Length', 'CODIGO', 'NOMBRE', 'LUGAR', 'category', 'layerId',
+    'FOTO', 'foto', 'FOTO_2', 'foto_2', 'VIDEO', 'video', 'OBS', 'AREA_LONG'
+  ];
 
   Object.keys(p).forEach(k => {
     if (ignoredKeys.includes(k)) return;
@@ -218,6 +227,51 @@ function renderGenericContent(container, featureData, { onClose } = {}) {
       `;
     }
   });
+
+  let mediaHtml = '';
+
+  // 1. Video Player si existe video operativo
+  if (videoUrl) {
+    mediaHtml += `
+      <div class="space-y-1">
+        <span class="text-rose-400 text-xs uppercase font-bold tracking-wider flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+          </svg>
+          <span>Video Operativo Adjunto</span>
+        </span>
+        <div class="rounded-xl overflow-hidden bg-black border border-slate-700 aspect-video shadow-md">
+          <video class="w-full h-full object-contain" controls preload="metadata" src="${videoUrl}">
+            Tu navegador no soporta reproducción de video HTML5.
+          </video>
+        </div>
+      </div>
+    `;
+  }
+
+  // 2. Fotos si existen evidencias fotográficas
+  if (resolvedPhotos.length > 0) {
+    mediaHtml += `
+      <div class="space-y-1">
+        <span class="text-amber-400 text-xs uppercase font-bold tracking-wider flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <span>Evidencias Fotográficas (${resolvedPhotos.length})</span>
+        </span>
+        <div class="grid grid-cols-${resolvedPhotos.length > 1 ? '2' : '1'} gap-2">
+          ${resolvedPhotos.map((photoUrl, idx) => `
+            <div class="popup-generic-photo relative group cursor-pointer overflow-hidden rounded-xl border border-slate-700 bg-black h-28 flex items-center justify-center shadow-inner" data-url="${photoUrl}" data-title="${escapeHtml(title)} - Evidencia ${idx + 1}">
+              <img src="${photoUrl}" alt="Evidencia ${idx + 1}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>';" />
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span class="px-2 py-0.5 rounded bg-black/80 text-white text-[10px] font-bold border border-slate-600 shadow">🔍 Ampliar</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
 
   container.innerHTML = `
     <div class="space-y-3">
@@ -233,17 +287,48 @@ function renderGenericContent(container, featureData, { onClose } = {}) {
         </button>
       </div>
 
+      ${mediaHtml}
+
       <div class="bg-slate-950 p-3 rounded-xl border border-slate-700 max-h-56 overflow-y-auto custom-scrollbar space-y-1">
         ${rowsHtml || '<span class="text-slate-400 text-xs">Sin atributos adicionales.</span>'}
       </div>
+
+      ${(videoUrl || resolvedPhotos.length > 0) ? `
+        <button type="button" id="popup-btn-drawer" class="w-full py-1.5 px-3 rounded-lg bg-sky-600/30 hover:bg-sky-600 border border-sky-500/40 text-sky-200 hover:text-white font-bold text-xs transition flex items-center justify-center space-x-1.5 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+          </svg>
+          <span>Abrir Ficha Multimedia Completa</span>
+        </button>
+      ` : ''}
     </div>
   `;
 
+  // Bind close
   const btnClose = container.querySelector('#popup-btn-close-gen');
   if (btnClose && onClose) {
     btnClose.addEventListener('click', (e) => {
       e.stopPropagation();
       onClose();
+    });
+  }
+
+  // Bind lightbox on photos
+  const photoCards = container.querySelectorAll('.popup-generic-photo');
+  photoCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const u = card.getAttribute('data-url');
+      const t = card.getAttribute('data-title') || 'Evidencia';
+      if (u) openLightbox(u, t);
+    });
+  });
+
+  // Bind open drawer button
+  const btnDrawer = container.querySelector('#popup-btn-drawer');
+  if (btnDrawer) {
+    btnDrawer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openMediaDrawer(featureData);
     });
   }
 }

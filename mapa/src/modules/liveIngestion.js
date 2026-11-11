@@ -14,9 +14,9 @@ export async function initLiveIngestion() {
     const resGeo = await fetch('https://www.idep.gob.pe/seguimiento/api/puntos.php?t=' + Date.now());
     if (resGeo.ok) {
       const geoData = await resGeo.json();
+      loadedFromLive = true;
       if (geoData.features && geoData.features.length > 0) {
         ingestFeaturesList(geoData.features, 'Valkiria Móvil (Producción)');
-        loadedFromLive = true;
         count = geoData.features.length;
       }
     }

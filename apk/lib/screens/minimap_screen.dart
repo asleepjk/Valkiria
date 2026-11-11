@@ -31,6 +31,7 @@ class _MinimapScreenState extends State<MinimapScreen> with SingleTickerProvider
   final MapController _mapController = MapController();
 
   GPSLocation? _myLocation;
+  bool _showSatellite = true;
   bool _showZonas = true;
   bool _showRCA = true;
   bool _showAirports = true;
@@ -551,8 +552,16 @@ class _MinimapScreenState extends State<MinimapScreen> with SingleTickerProvider
               maxZoom: 16.0,
             ),
             children: [
-              // Fondo Táctico Oscuro
+              // Fondo Táctico Oscuro (Base offline táctica siempre presente)
               Container(color: const Color(0xFF0A0F1D)),
+
+              // Capa Satelital Esri World Imagery (Activa si hay conexión a internet)
+              if (_showSatellite)
+                TileLayer(
+                  urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                  userAgentPackageName: 'pe.gob.idep.valkiria',
+                  maxZoom: 19,
+                ),
 
               // Polígonos de Zonas Operativas
               if (_showZonas) PolygonLayer(polygons: _zonasPolygons),
@@ -705,8 +714,20 @@ class _MinimapScreenState extends State<MinimapScreen> with SingleTickerProvider
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Capas Cartográficas Offline', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Control de Capas y Mapa Base', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
+              SwitchListTile(
+                value: _showSatellite,
+                title: const Text('Mapa Satelital Esri', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Requiere internet (degrada a táctico si offline)', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                secondary: const Icon(Icons.satellite_alt_rounded, color: Color(0xFF38BDF8)),
+                activeColor: const Color(0xFF38BDF8),
+                onChanged: (v) {
+                  setModalState(() => _showSatellite = v);
+                  setState(() => _showSatellite = v);
+                },
+              ),
+              const Divider(color: AppTheme.surfaceElevated),
               SwitchListTile(
                 value: _showReports,
                 title: const Text('Puntos Registrados en Campo (Valkiria)', style: TextStyle(fontSize: 13)),

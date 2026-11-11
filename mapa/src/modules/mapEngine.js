@@ -23,6 +23,7 @@ import GraphicsLayer from 'https://js.arcgis.com/4.31/@arcgis/core/layers/Graphi
 import ScaleBar from 'https://js.arcgis.com/4.31/@arcgis/core/widgets/ScaleBar.js';
 import Home from 'https://js.arcgis.com/4.31/@arcgis/core/widgets/Home.js';
 import Fullscreen from 'https://js.arcgis.com/4.31/@arcgis/core/widgets/Fullscreen.js';
+import Popup from 'https://js.arcgis.com/4.31/@arcgis/core/widgets/Popup.js';
 
 let map = null;
 let view = null;
@@ -50,16 +51,22 @@ export async function initMap(containerId = 'viewDiv') {
   });
 
   await view.when();
+  window.view = view;
 
-  if (view.popup) {
-    view.popup.dockOptions = {
+  // Instanciar widget oficial de Popup enlazado a la vista
+  const popupWidget = new Popup({
+    view: view,
+    dockOptions: {
       buttonEnabled: false,
       breakpoint: false
-    };
-    view.popup.visibleElements = {
+    },
+    visibleElements: {
       closeButton: false
-    };
-  }
+    }
+  });
+  view.popup = popupWidget;
+
+
 
   // 1. Widgets Esri de Navegación Básica
   const homeWidget = new Home({ view: view });

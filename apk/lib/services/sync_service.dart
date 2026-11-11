@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/survey_report.dart';
@@ -39,6 +40,14 @@ class SyncService {
   Future<void> saveServerApiUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConfig.prefApiUrl, url.trim());
+  }
+
+  // Cliente HTTP resiliente con bypass de certificados SSL intermedios no reconocidos por Android
+  http.Client _createResilientClient() {
+    final ioHttpClient = HttpClient();
+    ioHttpClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    ioHttpClient.connectionTimeout = const Duration(seconds: 25);
+    return IOClient(ioHttpClient);
   }
 
   // Sincronizar un único reporte con la API REST y SQL Server
@@ -81,17 +90,23 @@ class SyncService {
         'foto_nombre': '${report.id}.jpg',
       };
 
-      // 3. Envío HTTP POST al servidor IIS
-      final response = await http
-          .post(
-            Uri.parse(apiUrl),
-            headers: {
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 35));
+      // 3. Envío HTTP POST al servidor IIS con cliente resiliente
+      final client = _createResilientClient();
+      http.Response response;
+      try {
+        response = await client
+            .post(
+              Uri.parse(apiUrl),
+              headers: {
+                'Content-Type': 'application/json; charset=UTF-8',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 35));
+      } finally {
+        client.close();
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final resData = jsonDecode(response.body);
@@ -149,16 +164,22 @@ class SyncService {
         'id': id,
       };
 
-      final response = await http
-          .post(
-            Uri.parse(apiUrl),
-            headers: {
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 20));
+      final client = _createResilientClient();
+      http.Response response;
+      try {
+        response = await client
+            .post(
+              Uri.parse(apiUrl),
+              headers: {
+                'Content-Type': 'application/json; charset=UTF-8',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 20));
+      } finally {
+        client.close();
+      }
 
       if (response.statusCode == 200) {
         final resData = jsonDecode(response.body);

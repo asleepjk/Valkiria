@@ -1,0 +1,10 @@
+*.mpk
+*.aprx
+*.mxd
+*.gdb/
+*.apk
+*.aab
+*.map
+apk/
+mapa/
+downloads/

@@ -1,0 +1,54 @@
+﻿{
+    "name":  "valkiria_campo",
+    "features":  [
+                     {
+                         "properties":  {
+                                            "CODIGO":  "VAL-20261111-6F57",
+                                            "DMS":  "12°06\u002709\"S  077°01\u002701\"W",
+                                            "LUGAR":  "base pelancho",
+                                            "PRECISION_M":  21.926000595092773,
+                                            "MAQUINARIA":  "12 volquetes",
+                                            "ALTITUD":  154.00001525878906,
+                                            "FECHA":  "2026-11-11 12:23:59",
+                                            "PERSONAL":  "6 pelanchitos",
+                                            "FOTO":  "https://www.idep.gob.pe/seguimiento/api/fotos/VAL-20261111-6F57.jpg",
+                                            "TELEFONO":  "6666666",
+                                            "JEFE_TOB":  "picha",
+                                            "OCURRENCIAS":  "scooby no trabaja"
+                                        },
+                         "type":  "Feature",
+                         "geometry":  {
+                                          "coordinates":  [
+                                                              -77.0168611,
+                                                              -12.1026083
+                                                          ],
+                                          "type":  "Point"
+                                      }
+                     },
+                     {
+                         "properties":  {
+                                            "CODIGO":  "VAL-20261111-F401",
+                                            "DMS":  "12°06\u002709\"S  077°01\u002701\"W",
+                                            "LUGAR":  "Casa de scooby",
+                                            "PRECISION_M":  20.465999603271484,
+                                            "MAQUINARIA":  "5 volquetes",
+                                            "ALTITUD":  154.00001525878906,
+                                            "FECHA":  "2026-11-11 12:23:58",
+                                            "PERSONAL":  "7 personal",
+                                            "FOTO":  "https://www.idep.gob.pe/seguimiento/api/fotos/VAL-20261111-F401.jpg",
+                                            "TELEFONO":  "478888",
+                                            "JEFE_TOB":  "Picha",
+                                            "OCURRENCIAS":  "scooby sigue sin trabajar"
+                                        },
+                         "type":  "Feature",
+                         "geometry":  {
+                                          "coordinates":  [
+                                                              -77.0168918,
+                                                              -12.102602
+                                                          ],
+                                          "type":  "Point"
+                                      }
+                     }
+                 ],
+    "type":  "FeatureCollection"
+}

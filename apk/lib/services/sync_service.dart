@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -137,5 +138,36 @@ class SyncService {
     }
 
     return successCount;
+  }
+
+  // Eliminar un reporte del servidor SQL Server en producción
+  Future<bool> deleteReport(String id) async {
+    try {
+      final apiUrl = await getServerApiUrl();
+      final payload = {
+        'action': 'delete',
+        'id': id,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final resData = jsonDecode(response.body);
+        return resData['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error al eliminar en servidor: $e');
+      return false;
+    }
   }
 }

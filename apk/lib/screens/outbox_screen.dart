@@ -6,6 +6,7 @@ import '../models/survey_report.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
 import 'minimap_screen.dart';
+import 'survey_form_screen.dart';
 
 class OutboxScreen extends StatefulWidget {
   const OutboxScreen({super.key});
@@ -348,11 +349,34 @@ class _OutboxScreenState extends State<OutboxScreen> {
                   Row(
                     children: [
                       Text(dateFormatted, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryLight),
+                        tooltip: 'Editar reporte',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () async {
+                          final updated = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => SurveyFormScreen(reportToEdit: rep),
+                            ),
+                          );
+                          if (updated == true) {
+                            _loadReports();
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.danger),
+                        tooltip: 'Quitar reporte',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _confirmDelete(rep),
+                      ),
                       if (rep.syncStatus != SyncStatus.sent)
                         IconButton(
-                          icon: const Icon(Icons.send_rounded, size: 18, color: AppTheme.primaryLight),
+                          icon: const Icon(Icons.send_rounded, size: 16, color: AppTheme.primaryLight),
                           tooltip: 'Reintentar transmisión',
+                          visualDensity: VisualDensity.compact,
                           onPressed: _isSyncing ? null : () => _retrySingle(rep),
                         ),
                     ],
@@ -364,5 +388,50 @@ class _OutboxScreenState extends State<OutboxScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(SurveyReport rep) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
+            SizedBox(width: 8),
+            Text('Eliminar Punto'),
+          ],
+        ),
+        content: Text(
+          '¿Desea eliminar permanentemente el reporte ${rep.id}?\n\nEsta acción eliminará el registro del dispositivo y del servidor en producción.',
+          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseService.instance.deleteReport(rep.id);
+      SyncService.instance.deleteReport(rep.id);
+      _loadReports();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.danger,
+            content: Text('✓ Reporte ${rep.id} eliminado.'),
+          ),
+        );
+      }
+    }
   }
 }

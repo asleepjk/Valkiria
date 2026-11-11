@@ -247,26 +247,41 @@ export function openMediaDrawer(featureData) {
   const attrCont = document.getElementById('drawer-attributes');
   attrCont.innerHTML = '';
 
-  const displayFields = [
-    { label: 'Código', val: props.CODIGO || props.codigo },
-    { label: 'Lugar / Sector', val: props.LUGAR || props.lugar || props.adm1_name || props.adm2_name },
-    { label: 'Jefe de TOB', val: props.JEFE_TOB || props.jefe_tob },
-    { label: 'Teléfono', val: props.TELEFONO || props.telefono },
-    { label: 'Personal', val: props.PERSONAL || props.personal },
-    { label: 'Maquinaria', val: props.MAQUINARIA || props.maquinaria },
-    { label: 'Ocurrencias', val: props.OCURRENCIAS || props.ocurrencias },
-    { label: 'Nombre Operativo', val: props.NOMBRE || props.nombre },
-    { label: 'Sección', val: props.SECCION || props.seccion },
-    { label: 'Tipo de Trabajo', val: props.TIPO_TRAB || props.tipo_trab },
-    { label: 'Task Order', val: props.TASK_ORDER || props.task_order },
-    { label: 'Responsable', val: props.RESPONSABLE || props.responsable },
-    { label: 'Altitud', val: props.ALTITUD ? `${Math.round(props.ALTITUD)} m s.n.m.` : null },
-    { label: 'Precisión GPS', val: props.PRECISION_M ? `±${Number(props.PRECISION_M).toFixed(1)} m` : null },
-    { label: 'Coordenadas DMS', val: props.DMS || props.dms },
-    { label: 'Fecha de Registro', val: props.FECHA || props.fecha_envio },
-    { label: 'Descripción', val: props.DESCRIPCION || props.descripcion },
-    { label: 'Observaciones', val: props.OBS || props.obs }
-  ];
+  const isValkiria = category === 'REPORTE DE CAMPO' || Boolean(props.JEFE_TOB || props.jefe_tob);
+
+  let displayFields = [];
+  if (isValkiria) {
+    // Orden idéntico y exclusivo al aplicativo móvil Valkiria
+    displayFields = [
+      { label: '1. Jefe de TOB', val: props.JEFE_TOB || props.jefe_tob },
+      { label: '2. Teléfono', val: props.TELEFONO || props.telefono },
+      { label: '3. Lugar de Misión', val: props.LUGAR || props.lugar },
+      { label: '4. Personal', val: props.PERSONAL || props.personal || props.persona },
+      { label: '5. Maquinaria', val: props.MAQUINARIA || props.maquinaria },
+      { label: '6. Ocurrencias', val: props.OCURRENCIAS || props.ocurrencias },
+      { label: 'Coordenadas DMS', val: props.DMS || props.dms },
+      { label: 'Altitud', val: props.ALTITUD ? `${Math.round(props.ALTITUD)} m s.n.m.` : null },
+      { label: 'Precisión GPS', val: props.PRECISION_M ? `±${Number(props.PRECISION_M).toFixed(1)} m` : null },
+      { label: 'Fecha de Registro', val: props.FECHA || props.fecha_envio },
+      { label: 'Código / ID', val: props.CODIGO || props.codigo }
+    ];
+  } else {
+    displayFields = [
+      { label: 'Código', val: props.CODIGO || props.codigo },
+      { label: 'Lugar / Sector', val: props.LUGAR || props.lugar || props.adm1_name || props.adm2_name },
+      { label: 'Nombre Operativo', val: props.NOMBRE || props.nombre },
+      { label: 'Sección', val: props.SECCION || props.seccion },
+      { label: 'Tipo de Trabajo', val: props.TIPO_TRAB || props.tipo_trab },
+      { label: 'Task Order', val: props.TASK_ORDER || props.task_order },
+      { label: 'Responsable', val: props.RESPONSABLE || props.responsable },
+      { label: 'Altitud', val: props.ALTITUD ? `${Math.round(props.ALTITUD)} m s.n.m.` : null },
+      { label: 'Precisión GPS', val: props.PRECISION_M ? `±${Number(props.PRECISION_M).toFixed(1)} m` : null },
+      { label: 'Coordenadas DMS', val: props.DMS || props.dms },
+      { label: 'Fecha de Registro', val: props.FECHA || props.fecha_envio },
+      { label: 'Descripción', val: props.DESCRIPCION || props.descripcion },
+      { label: 'Observaciones', val: props.OBS || props.obs }
+    ];
+  }
 
   displayFields.filter(f => f.val !== undefined && f.val !== null && String(f.val).trim() !== '').forEach(item => {
     const row = document.createElement('div');

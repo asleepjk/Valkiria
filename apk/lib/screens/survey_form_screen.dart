@@ -17,7 +17,9 @@ import '../widgets/accuracy_badge.dart';
 import 'minimap_screen.dart';
 
 class SurveyFormScreen extends StatefulWidget {
-  const SurveyFormScreen({super.key});
+  final SurveyReport? reportToEdit;
+
+  const SurveyFormScreen({super.key, this.reportToEdit});
 
   @override
   State<SurveyFormScreen> createState() => _SurveyFormScreenState();
@@ -41,12 +43,27 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
   bool _isSaving = false;
   late String _reportId;
 
+  bool get _isEditing => widget.reportToEdit != null;
+
   @override
   void initState() {
     super.initState();
-    _generateReportId();
-    _loadSavedDefaults();
-    _captureCurrentGPS();
+    if (_isEditing) {
+      final rep = widget.reportToEdit!;
+      _reportId = rep.id;
+      _jefeTobCtrl.text = rep.jefeTob;
+      _telefonoCtrl.text = rep.telefono;
+      _lugarMisionCtrl.text = rep.lugarMision;
+      _personaCtrl.text = rep.persona;
+      _maquinariaCtrl.text = rep.maquinaria;
+      _ocurrenciasCtrl.text = rep.ocurrencias;
+      _gps = rep.gps;
+      _fotoLocalPath = rep.fotoLocalPath;
+    } else {
+      _generateReportId();
+      _loadSavedDefaults();
+      _captureCurrentGPS();
+    }
   }
 
   @override
@@ -142,7 +159,7 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
       // 2. Asegurar coordenadas GPS
       final gpsToSave = _gps ?? await GPSService.instance.getCurrentPosition();
 
-      // 3. Crear el objeto SurveyReport estandarizado
+      // 3. Crear o actualizar el objeto SurveyReport estandarizado
       final now = DateTime.now();
       final report = SurveyReport(
         id: _reportId,
@@ -155,12 +172,16 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         gps: gpsToSave,
         fotoLocalPath: _fotoLocalPath,
         syncStatus: SyncStatus.pending,
-        createdAt: now,
+        createdAt: _isEditing ? widget.reportToEdit!.createdAt : now,
         updatedAt: now,
       );
 
       // 4. Guardar en SQLite Local (Outbox offline garantizada)
-      await DatabaseService.instance.insertReport(report);
+      if (_isEditing) {
+        await DatabaseService.instance.updateReport(report);
+      } else {
+        await DatabaseService.instance.insertReport(report);
+      }
 
       // 5. Intentar sincronización en background si hay conectividad
       SyncService.instance.syncReport(report);
@@ -170,20 +191,26 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
           SnackBar(
             backgroundColor: AppTheme.accent,
             duration: const Duration(seconds: 2),
-            content: Text('✓ Reporte $_reportId guardado. Mostrando en el mapa...'),
+            content: Text(_isEditing 
+                ? '✓ Reporte $_reportId actualizado correctamente.' 
+                : '✓ Reporte $_reportId guardado. Mostrando en el mapa...'),
           ),
         );
 
-        // 6. Redirigir de inmediato al Minimapa Táctico enfocando el nuevo punto
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => MinimapScreen(
-              focusReportId: report.id,
-              focusLocation: report.gps,
+        if (_isEditing) {
+          Navigator.pop(context, true);
+        } else {
+          // 6. Redirigir de inmediato al Minimapa Táctico enfocando el nuevo punto
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) => MinimapScreen(
+                focusReportId: report.id,
+                focusLocation: report.gps,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -202,7 +229,8 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Nuevo Registro de Campo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            Text(_isEditing ? 'Editar Registro de Campo' : 'Nuevo Registro de Campo',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             Text(
               'ID: $_reportId',
               style: const TextStyle(fontSize: 11, color: AppTheme.primaryLight, fontFamily: 'monospace'),
@@ -227,15 +255,17 @@ class _SurveyFormScreenState extends State<SurveyFormScreen> {
             _buildPhotoSection(),
             const SizedBox(height: 24),
 
-            // 4. Botón de Acción Principal: GUARDAR Y VER EN EL MAPA
+            // 4. Botón de Acción Principal: GUARDAR / ACTUALIZAR
             SizedBox(
               height: 52,
               child: ElevatedButton.icon(
                 icon: _isSaving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.map_rounded, size: 22),
+                    : Icon(_isEditing ? Icons.check_circle_rounded : Icons.map_rounded, size: 22),
                 label: Text(
-                  _isSaving ? 'GUARDANDO REGISTRO...' : 'GUARDAR Y VER EN EL MAPA',
+                  _isSaving
+                      ? 'GUARDANDO CAMBIOS...'
+                      : (_isEditing ? 'ACTUALIZAR REGISTRO' : 'GUARDAR Y VER EN EL MAPA'),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 onPressed: _isSaving ? null : _saveAndShowOnMap,

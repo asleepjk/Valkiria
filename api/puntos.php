@@ -5,10 +5,8 @@
  * Endpoint: https://www.idep.gob.pe/seguimiento/api/puntos.php
  * Ubicación en Servidor: C:\inetpub\wwwroot\seguimiento\api\puntos.php
  *
- * Devuelve un FeatureCollection GeoJSON estandarizado con los puntos registrados
- * desde el aplicativo móvil Valkiria para su renderizado en tiempo real en el visor web.
- *
- * SEGURIDAD: Cero exposición de datos sensibles (IP, nombres de BD, credenciales o trazas de error).
+ * Devuelve un FeatureCollection GeoJSON con los 7 campos operativos en el orden exacto
+ * del aplicativo móvil y la URL de transmisión directa de la foto mediante foto.php.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -17,13 +15,11 @@ header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 
-// Manejo de preflight CORS OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// 1. Configuración de Conexión a SQL Server en Localhost (dentro de 10.65.201.28)
 $serverName = "localhost";
 $connectionOptions = array(
     "Database" => "SEGUIMIENTO",
@@ -32,20 +28,15 @@ $connectionOptions = array(
     "CharacterSet" => "UTF-8"
 );
 
-// Conectar con supresión de errores para evitar cualquier fuga de información
 $conn = @sqlsrv_connect($serverName, $connectionOptions);
 if ($conn === false) {
     http_response_code(500);
-    echo json_encode(array(
-        "type" => "FeatureCollection",
-        "features" => array()
-    ));
+    echo json_encode(array("type" => "FeatureCollection", "features" => array()));
     exit;
 }
 
-// 2. Consulta de Reportes de Campo
 $sql = "SELECT id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurrencias, 
-               latitud, longitud, altitud, precision_m, dms, foto_path, 
+               latitud, longitud, altitud, precision_m, dms, foto_path, foto_base64,
                CONVERT(VARCHAR(20), fecha_registro, 120) as fecha_registro
         FROM [dbo].[valkiria_reportes]
         WHERE latitud IS NOT NULL AND longitud IS NOT NULL
@@ -54,15 +45,11 @@ $sql = "SELECT id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurr
 $stmt = @sqlsrv_query($conn, $sql);
 if ($stmt === false) {
     http_response_code(500);
-    echo json_encode(array(
-        "type" => "FeatureCollection",
-        "features" => array()
-    ));
+    echo json_encode(array("type" => "FeatureCollection", "features" => array()));
     @sqlsrv_close($conn);
     exit;
 }
 
-// 3. Ensamblado del GeoJSON FeatureCollection
 $features = array();
 $baseUrl = "https://www.idep.gob.pe/seguimiento/api/";
 
@@ -70,15 +57,11 @@ while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
     $lon = floatval($row['longitud']);
     $lat = floatval($row['latitud']);
 
-    // Resolver URL completa de la foto si existe
+    // Resolver URL de foto streaming hacia foto.php
     $fotoUrl = null;
-    if (!empty($row['foto_path'])) {
-        $cleanPath = trim($row['foto_path']);
-        if (strpos($cleanPath, 'http://') === 0 || strpos($cleanPath, 'https://') === 0) {
-            $fotoUrl = $cleanPath;
-        } else {
-            $fotoUrl = $baseUrl . ltrim($cleanPath, '/');
-        }
+    $hasPhoto = (!empty($row['foto_base64']) || !empty($row['foto_path']));
+    if ($hasPhoto) {
+        $fotoUrl = $baseUrl . "foto.php?id=" . urlencode($row['id']);
     }
 
     $features[] = array(
@@ -89,16 +72,16 @@ while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
         ),
         "properties" => array(
             "CODIGO"       => $row['id'],
-            "LUGAR"        => $row['lugar_mision'] ? $row['lugar_mision'] : 'Punto de Misión',
             "JEFE_TOB"     => $row['jefe_tob'],
             "TELEFONO"     => $row['telefono'],
+            "LUGAR"        => $row['lugar_mision'] ? $row['lugar_mision'] : 'Punto de Misión',
             "PERSONAL"     => $row['personal'],
             "MAQUINARIA"   => $row['maquinaria'],
             "OCURRENCIAS"  => $row['ocurrencias'],
+            "FOTO"         => $fotoUrl,
             "ALTITUD"      => ($row['altitud'] !== null) ? floatval($row['altitud']) : null,
             "PRECISION_M"  => ($row['precision_m'] !== null) ? floatval($row['precision_m']) : null,
             "DMS"          => $row['dms'],
-            "FOTO"         => $fotoUrl,
             "FECHA"        => $row['fecha_registro']
         )
     );

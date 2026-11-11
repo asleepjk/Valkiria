@@ -10,6 +10,8 @@ import '../models/gps_location.dart';
 import '../models/survey_report.dart';
 import '../services/database_service.dart';
 import '../services/gps_service.dart';
+import '../services/sync_service.dart';
+import 'survey_form_screen.dart';
 
 class MinimapScreen extends StatefulWidget {
   final String? focusReportId;
@@ -392,15 +394,107 @@ class _MinimapScreenState extends State<MinimapScreen> with SingleTickerProvider
                 ),
               ),
             ],
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar Detalle'),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.edit_rounded, size: 16),
+                    label: const Text('Editar Punto'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryLight,
+                      side: const BorderSide(color: AppTheme.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      final updated = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (c) => SurveyFormScreen(reportToEdit: rep),
+                        ),
+                      );
+                      if (updated == true) {
+                        _loadReports();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Quitar Punto'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.danger,
+                      side: const BorderSide(color: AppTheme.danger),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _confirmDelete(rep);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar Detalle', style: TextStyle(color: AppTheme.textMuted)),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(SurveyReport rep) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.danger),
+            SizedBox(width: 8),
+            Text('Eliminar Punto'),
+          ],
+        ),
+        content: Text(
+          '¿Desea eliminar permanentemente el reporte ${rep.id}?\n\nEsta acción eliminará el registro del dispositivo y del servidor en producción.',
+          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseService.instance.deleteReport(rep.id);
+      SyncService.instance.deleteReport(rep.id);
+      _loadReports();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.danger,
+            content: Text('✓ Reporte ${rep.id} eliminado del dispositivo y del servidor.'),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildDetailRow(String label, String value) {

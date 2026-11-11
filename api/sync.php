@@ -2,11 +2,18 @@
 /**
  * VALKIRIA REST API - Endpoint de Producción Blindado
  * Endpoint: https://www.idep.gob.pe/seguimiento/api/sync.php
+ * Ubicación en Servidor: C:\inetpub\wwwroot\seguimiento\api\sync.php
+ *
+ * Soporta:
+ * - GET: Health check seguro (cero divulgación de información).
+ * - POST normal / action=upsert: Inserción y actualización de reportes de campo.
+ * - POST action=delete: Eliminación segura de reportes por ID.
+ * - Persistencia fotográfica directa en base de datos (foto_base64 y foto_blob) + caché en disco.
  */
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -22,16 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // -------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     http_response_code(200);
-    echo json_encode(array(
-        "status" => "ok"
-    ), JSON_UNESCAPED_UNICODE);
+    echo json_encode(array("status" => "ok"), JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // -------------------------------------------------------------
-// POST: Recepción de nuevo reporte de campo desde el APK móvil
+// POST / DELETE: Operaciones sobre reportes de campo
 // -------------------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $rawInput = file_get_contents('php://input');
     $payload = json_decode($rawInput, true);
 
@@ -48,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Conexión segura a SQL Server SEGUIMIENTO
+    // Conexión segura a SQL Server SEGUIMIENTO en localhost
     $serverName = "localhost";
     $connectionOptions = array(
         "Database" => "SEGUIMIENTO",
@@ -60,13 +65,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = @sqlsrv_connect($serverName, $connectionOptions);
     if ($conn === false) {
         http_response_code(500);
+        echo json_encode(array("success" => false, "message" => "Error interno del servicio"), JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $action = isset($payload['action']) ? strtolower(trim($payload['action'])) : 'upsert';
+
+    // -------------------------------------------------------------
+    // ACCIÓN 1: ELIMINAR REPORTE (action == 'delete' o método DELETE)
+    // -------------------------------------------------------------
+    if ($action === 'delete' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        $sqlDelete = "DELETE FROM [dbo].[valkiria_reportes] WHERE id = ?";
+        $stmtDel = @sqlsrv_query($conn, $sqlDelete, array($id));
+
+        if ($stmtDel === false) {
+            http_response_code(500);
+            echo json_encode(array("success" => false, "message" => "Error al eliminar el reporte"), JSON_UNESCAPED_UNICODE);
+            @sqlsrv_close($conn);
+            exit;
+        }
+
+        // Eliminar también caché de foto en disco si existe
+        $cachedPhoto = __DIR__ . '/fotos/' . $id . '.jpg';
+        if (file_exists($cachedPhoto)) {
+            @unlink($cachedPhoto);
+        }
+
+        @sqlsrv_close($conn);
+        http_response_code(200);
         echo json_encode(array(
-            "success" => false,
-            "message" => "Error interno del servicio"
+            "success" => true,
+            "id" => $id,
+            "message" => "Reporte eliminado correctamente."
         ), JSON_UNESCAPED_UNICODE);
         exit;
     }
 
+    // -------------------------------------------------------------
+    // ACCIÓN 2: GUARDAR / EDITAR REPORTE (UPSERT)
+    // -------------------------------------------------------------
     $jefeTob     = isset($payload['jefe_tob']) ? trim($payload['jefe_tob']) : '';
     $telefono    = isset($payload['telefono']) ? trim($payload['telefono']) : '';
     $lugarMision = isset($payload['lugar_mision']) ? trim($payload['lugar_mision']) : '';
@@ -83,25 +120,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dms         = isset($coords['dms']) ? trim($coords['dms']) : '';
     $ipOrigen    = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
 
-    // 1. Guardar Evidencia Fotográfica en disco
+    // Procesamiento fotográfico: Guardar tanto en SQL Server como en disco si es posible
     $fotoPath = null;
+    $fotoBase64 = null;
+    $fotoBlob = null;
+
     if (!empty($payload['foto_base64'])) {
-        $fotoBytes = base64_decode($payload['foto_base64']);
-        if ($fotoBytes !== false) {
-            $fotoFilename = $id . '.jpg';
+        $fotoBase64 = trim($payload['foto_base64']);
+        $bytes = base64_decode($fotoBase64);
+        if ($bytes !== false) {
+            $fotoBlob = $bytes;
+            $fotoPath = 'foto.php?id=' . $id;
+
+            // Intentar escribir en disco como acelerador de caché
             $dirFotos = __DIR__ . '/fotos/';
             if (!is_dir($dirFotos)) {
                 @mkdir($dirFotos, 0777, true);
             }
-            $destFile = $dirFotos . $fotoFilename;
-            @file_put_contents($destFile, $fotoBytes);
-            $fotoPath = 'fotos/' . $fotoFilename;
+            @file_put_contents($dirFotos . $id . '.jpg', $bytes);
         }
     } elseif (!empty($payload['foto_path'])) {
         $fotoPath = trim($payload['foto_path']);
     }
 
-    // 2. Insertar o Actualizar en SQL Server (MERGE atómico e idempotente)
+    // MERGE atómico en SQL Server: Soporta inserción y actualización
     $sqlMerge = "
         MERGE INTO [dbo].[valkiria_reportes] AS target
         USING (SELECT ? AS id) AS source
@@ -114,25 +156,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 personal = ?,
                 maquinaria = ?,
                 ocurrencias = ?,
-                latitud = ?,
-                longitud = ?,
-                altitud = ?,
-                precision_m = ?,
-                dms = ?,
+                latitud = CASE WHEN ? <> 0 THEN ? ELSE target.latitud END,
+                longitud = CASE WHEN ? <> 0 THEN ? ELSE target.longitud END,
+                altitud = CASE WHEN ? <> 0 THEN ? ELSE target.altitud END,
+                precision_m = CASE WHEN ? <> 0 THEN ? ELSE target.precision_m END,
+                dms = COALESCE(NULLIF(?, ''), target.dms),
                 foto_path = COALESCE(?, target.foto_path),
+                foto_base64 = COALESCE(?, target.foto_base64),
+                foto_blob = COALESCE(?, target.foto_blob),
                 ip_origen = ?
         WHEN NOT MATCHED THEN
-            INSERT (id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurrencias, latitud, longitud, altitud, precision_m, dms, foto_path, fecha_registro, ip_origen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), ?);
+            INSERT (id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurrencias, latitud, longitud, altitud, precision_m, dms, foto_path, foto_base64, foto_blob, fecha_registro, ip_origen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), ?);
     ";
 
     $params = array(
-        // Parámetros para UPDATE
-        $id, $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
-        $latitud, $longitud, $altitud, $precisionM, $dms, $fotoPath, $ipOrigen,
-        // Parámetros para INSERT
-        $id, $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
-        $latitud, $longitud, $altitud, $precisionM, $dms, $fotoPath, $ipOrigen
+        // UPDATE params
+        $id,
+        $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
+        $latitud, $latitud,
+        $longitud, $longitud,
+        $altitud, $altitud,
+        $precisionM, $precisionM,
+        $dms,
+        $fotoPath,
+        $fotoBase64,
+        $fotoBlob,
+        $ipOrigen,
+
+        // INSERT params
+        $id,
+        $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
+        $latitud, $longitud, $altitud, $precisionM, $dms,
+        $fotoPath, $fotoBase64, $fotoBlob,
+        $ipOrigen
     );
 
     $stmt = @sqlsrv_query($conn, $sqlMerge, $params);

@@ -93,3 +93,29 @@ html, body {
 .esri-scale-bar__line {
   border-color: #ffffff !important;
 }
+
+/* Custom Compact Tactical Popup */
+.esri-popup__main-container {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.15) !important;
+  backdrop-filter: blur(12px) !important;
+  max-width: 340px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.esri-popup__header {
+  display: none !important; /* Header táctico integrado propio */
+}
+
+.esri-popup__content {
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  max-width: 340px !important;
+}
+
+.esri-popup__pointer-direction {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}

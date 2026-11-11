@@ -7,6 +7,7 @@ import { LAYERS_CONFIG, RASTER_CONFIG } from './layersConfig.js';
 import { openMediaDrawer } from './mediaDrawer.js';
 import { updateTableData } from './attributeTable.js';
 import { matchesCurrentFilter } from './dateFilter.js';
+import { createCompactPopupContent } from './compactPopup.js';
 
 // Módulos oficiales de Esri desde CDN
 import Map from 'https://js.arcgis.com/4.31/@arcgis/core/Map.js';
@@ -236,42 +237,6 @@ function setupMapEvents() {
     const layer = graphic.layer;
     const cfg = LAYERS_CONFIG.find(c => c.id === layer.id) || {};
 
-    // Manejo específico para la capa de Aeropuertos: Popup táctico flotante
-    if (layer.id === 'airport') {
-      highlightFeature(graphic.geometry);
-      const geom = graphic.geometry;
-      const lon = geom.longitude !== undefined ? geom.longitude : (geom.x !== undefined ? geom.x : 0);
-      const lat = geom.latitude !== undefined ? geom.latitude : (geom.y !== undefined ? geom.y : 0);
-      const name = graphic.attributes?.Name || 'PISTA NO ESPECIFICADA';
-      const oid = graphic.attributes?.OID || graphic.attributes?.OBJECTID || '-';
-
-      const dmsLon = toDMS(lon, false);
-      const dmsLat = toDMS(lat, true);
-
-      view.openPopup({
-        title: `✈️ AERÓDROMO: ${name}`,
-        location: geom,
-        content: `
-          <div style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; color: #f1f5f9; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155; line-height: 1.5;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-              <span style="color: #38bdf8; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Identificador</span>
-              <span style="background: rgba(56, 189, 248, 0.2); color: #7dd3fc; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid rgba(56, 189, 248, 0.4);">ID #${oid}</span>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <div style="color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 600;">Nombre de Pista / Aeródromo:</div>
-              <div style="color: #ffffff; font-weight: 700; font-size: 14px;">${name}</div>
-            </div>
-            <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid #1e293b; border-radius: 6px; padding: 8px;">
-              <div style="color: #94a3b8; font-size: 10px; margin-bottom: 4px; text-transform: uppercase; font-weight: 600;">Coordenadas WGS84:</div>
-              <div style="color: #4ade80; font-weight: 600; font-size: 11px;">DD: ${lat.toFixed(5)}°, ${lon.toFixed(5)}°</div>
-              <div style="color: #cbd5e1; font-size: 11px; margin-top: 2px;">DMS: ${dmsLat}, ${dmsLon}</div>
-            </div>
-          </div>
-        `
-      });
-      return;
-    }
-
     const featureData = {
       properties: graphic.attributes,
       geometry: graphic.geometry,
@@ -280,7 +245,16 @@ function setupMapEvents() {
     };
 
     highlightFeature(graphic.geometry);
-    openMediaDrawer(featureData);
+
+    const popupContent = createCompactPopupContent(featureData, {
+      onPointUpdated: updateLivePointAttributes,
+      onPointDeleted: removeLivePointFromMap
+    });
+
+    view.openPopup({
+      location: event.mapPoint || graphic.geometry,
+      content: popupContent
+    });
   });
 }
 
@@ -332,20 +306,106 @@ export function zoomToFeature(feature) {
   if (feature.geometry && feature.geometry.type === 'Point' && feature.geometry.coordinates) {
     const [lon, lat] = feature.geometry.coordinates;
     geom = new Point({ longitude: lon, latitude: lat });
-    view.goTo({ target: geom, zoom: 14 }, { duration: 800 });
+    view.goTo({ target: geom, zoom: 15 }, { duration: 800 });
   } else if (feature.geometry && feature.geometry.latitude) {
     geom = feature.geometry;
-    view.goTo({ target: geom, zoom: 14 }, { duration: 800 });
+    view.goTo({ target: geom, zoom: 15 }, { duration: 800 });
   } else if (feature.geometry && feature.geometry.coordinates) {
     const coords = feature.geometry.coordinates[0];
     if (coords && coords.length > 0) {
       const [lon, lat] = coords[0];
-      view.goTo({ target: new Point({ longitude: lon, latitude: lat }), zoom: 13 }, { duration: 800 });
+      geom = new Point({ longitude: lon, latitude: lat });
+      view.goTo({ target: geom, zoom: 13 }, { duration: 800 });
     }
   }
 
-  if (geom) highlightFeature(geom);
-  openMediaDrawer(feature);
+  if (geom) {
+    highlightFeature(geom);
+    const popupContent = createCompactPopupContent(feature, {
+      onPointUpdated: updateLivePointAttributes,
+      onPointDeleted: removeLivePointFromMap
+    });
+    view.openPopup({
+      location: geom,
+      content: popupContent
+    });
+  }
+}
+
+export function updateLivePointAttributes(id, updatedProps) {
+  if (!liveGraphicsLayer) return;
+
+  liveGraphicsLayer.graphics.forEach(g => {
+    if (g.attributes && (g.attributes.CODIGO === id || g.attributes.id === id)) {
+      if (updatedProps.jefe_tob) g.attributes.JEFE_TOB = updatedProps.jefe_tob;
+      if (updatedProps.telefono) g.attributes.TELEFONO = updatedProps.telefono;
+      if (updatedProps.lugar_mision) {
+        g.attributes.LUGAR = updatedProps.lugar_mision;
+        if (g.symbol && g.symbol.type === 'text') {
+          g.symbol.text = updatedProps.lugar_mision;
+        }
+      }
+      if (updatedProps.personal) g.attributes.PERSONAL = updatedProps.personal;
+      if (updatedProps.maquinaria) g.attributes.MAQUINARIA = updatedProps.maquinaria;
+      if (updatedProps.ocurrencias) g.attributes.OCURRENCIAS = updatedProps.ocurrencias;
+    }
+  });
+
+  const liveStore = rawGeojsonStore['live_submissions'];
+  if (liveStore && liveStore.features) {
+    const f = liveStore.features.find(feat => feat.properties && (feat.properties.CODIGO === id || feat.properties.id === id));
+    if (f && f.properties) {
+      if (updatedProps.jefe_tob) f.properties.JEFE_TOB = updatedProps.jefe_tob;
+      if (updatedProps.telefono) f.properties.TELEFONO = updatedProps.telefono;
+      if (updatedProps.lugar_mision) f.properties.LUGAR = updatedProps.lugar_mision;
+      if (updatedProps.personal) f.properties.PERSONAL = updatedProps.personal;
+      if (updatedProps.maquinaria) f.properties.MAQUINARIA = updatedProps.maquinaria;
+      if (updatedProps.ocurrencias) f.properties.OCURRENCIAS = updatedProps.ocurrencias;
+    }
+    updateTableData('live_submissions', liveStore.features, 'Reportes de Campo');
+  }
+
+  if (view && view.popup && view.popup.visible) {
+    const currentGraphic = liveGraphicsLayer.graphics.find(g => g.attributes && (g.attributes.CODIGO === id || g.attributes.id === id));
+    if (currentGraphic) {
+      const featureData = {
+        properties: currentGraphic.attributes,
+        geometry: currentGraphic.geometry,
+        category: 'REPORTE DE CAMPO',
+        layerId: 'live_submissions'
+      };
+      const node = createCompactPopupContent(featureData, {
+        onPointUpdated: updateLivePointAttributes,
+        onPointDeleted: removeLivePointFromMap
+      });
+      view.popup.content = node;
+    }
+  }
+}
+
+export function removeLivePointFromMap(id) {
+  if (!liveGraphicsLayer) return;
+
+  const toRemove = [];
+  liveGraphicsLayer.graphics.forEach(g => {
+    if (g.attributes && (g.attributes.CODIGO === id || g.attributes.id === id)) {
+      toRemove.push(g);
+    }
+  });
+  toRemove.forEach(g => liveGraphicsLayer.remove(g));
+
+  if (highlightGraphic) highlightGraphic.removeAll();
+
+  const liveStore = rawGeojsonStore['live_submissions'];
+  if (liveStore && liveStore.features) {
+    liveStore.features = liveStore.features.filter(feat => feat.properties && feat.properties.CODIGO !== id && feat.properties.id !== id);
+    rawGeojsonStore['live_submissions'] = liveStore;
+    updateTableData('live_submissions', liveStore.features, 'Reportes de Campo');
+  }
+
+  if (view && view.popup) {
+    view.closePopup();
+  }
 }
 
 export function applyDateFilter() {

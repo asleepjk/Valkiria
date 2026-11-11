@@ -26,11 +26,15 @@ export function resolvePhotoUrl(filename) {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
     return trimmed;
   }
+  if (trimmed.startsWith('foto.php')) {
+    return `https://www.idep.gob.pe/seguimiento/api/${trimmed}`;
+  }
   if (trimmed.startsWith('fotos/')) {
     return `https://www.idep.gob.pe/seguimiento/api/${trimmed}`;
   }
   if (trimmed.startsWith('VAL-')) {
-    return `https://www.idep.gob.pe/seguimiento/api/fotos/${trimmed}`;
+    const cleanId = trimmed.replace(/\.jpg$/i, '');
+    return `https://www.idep.gob.pe/seguimiento/api/foto.php?id=${cleanId}`;
   }
   const key = trimmed.toLowerCase();
   if (KNOWN_PHOTOS[key]) {

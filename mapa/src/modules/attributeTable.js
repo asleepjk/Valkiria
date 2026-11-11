@@ -201,9 +201,40 @@ function renderCurrentTable() {
 
   const currentLayer = allLayerData[currentTab];
   if (!currentLayer || !currentLayer.features) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-500">No hay datos disponibles para esta capa.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-500">No hay datos disponibles para esta capa.</td></tr>`;
     if (recordCount) recordCount.textContent = '0 registros';
     return;
+  }
+
+  // Actualizar cabeceras según el tipo de capa
+  const theadRow = document.getElementById('table-header-row');
+  if (theadRow) {
+    if (currentTab === 'live_submissions') {
+      theadRow.innerHTML = `
+        <th class="py-2.5 px-3">#</th>
+        <th class="py-2.5 px-3">Código</th>
+        <th class="py-2.5 px-3">1. Jefe TOB</th>
+        <th class="py-2.5 px-3">2. Teléfono</th>
+        <th class="py-2.5 px-3">3. Lugar de Misión</th>
+        <th class="py-2.5 px-3">4. Personal</th>
+        <th class="py-2.5 px-3">5. Maquinaria</th>
+        <th class="py-2.5 px-3">6. Ocurrencias</th>
+        <th class="py-2.5 px-3 text-center">Foto</th>
+        <th class="py-2.5 px-3 text-center">Acción</th>
+      `;
+    } else {
+      theadRow.innerHTML = `
+        <th class="py-2.5 px-3">#</th>
+        <th class="py-2.5 px-3">Código</th>
+        <th class="py-2.5 px-3">Lugar / Nombre</th>
+        <th class="py-2.5 px-3">Sección</th>
+        <th class="py-2.5 px-3">Tipo de Trabajo</th>
+        <th class="py-2.5 px-3">Responsable</th>
+        <th class="py-2.5 px-3">Fechas</th>
+        <th class="py-2.5 px-3 text-center">Multimedia</th>
+        <th class="py-2.5 px-3 text-center">Acción</th>
+      `;
+    }
   }
 
   const searchInput = document.getElementById('table-search-input');
@@ -221,7 +252,7 @@ function renderCurrentTable() {
   if (recordCount) recordCount.textContent = `${list.length} de ${currentLayer.features.length} registros`;
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-500">Ningún registro coincide con el filtro.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-500">Ningún registro coincide con el filtro.</td></tr>`;
     return;
   }
 
@@ -231,38 +262,67 @@ function renderCurrentTable() {
     const tr = document.createElement('tr');
     tr.className = 'hover:bg-slate-800/60 cursor-pointer transition';
 
-    const codigo = p.CODIGO || p.codigo || `#${index + 1}`;
-    const nombre = p.NOMBRE || p.nombre || p.LUGAR || p.lugar || p.Name || p.name || p.adm1_name || p.adm2_name || '-';
-    const seccion = p.SECCION || p.seccion || '-';
-    const tipo = p.TIPO_TRAB || p.tipo_trab || p.ZONAS || '-';
-    const resp = p.RESPONSABLE || p.responsable || '-';
-    const fechas = p.F_INICIO ? `${p.F_INICIO} → ${p.F_TERMINO || 'Actual'}` : (p.fecha_envio || '-');
+    if (currentTab === 'live_submissions') {
+      const codigo = p.CODIGO || p.codigo || `#${index + 1}`;
+      const jefe = p.JEFE_TOB || p.jefe_tob || '-';
+      const tel = p.TELEFONO || p.telefono || '-';
+      const lugar = p.LUGAR || p.lugar || '-';
+      const pers = p.PERSONAL || p.personal || p.persona || '-';
+      const maq = p.MAQUINARIA || p.maquinaria || '-';
+      const ocurr = p.OCURRENCIAS || p.ocurrencias || '-';
+      const hasPhoto = Boolean(p.FOTO || p.foto || p.foto_path || p.foto_base64);
 
-    // Multimedia flags
-    const hasPhoto = Boolean(p.FOTO || p.foto || p.FOTO_2 || p.foto_2);
-    const hasVideo = Boolean(p.VIDEO || p.video);
+      tr.innerHTML = `
+        <td class="py-2 px-3 text-slate-500">${index + 1}</td>
+        <td class="py-2 px-3 font-semibold text-rose-400 font-mono">${codigo}</td>
+        <td class="py-2 px-3 text-white font-medium">${jefe}</td>
+        <td class="py-2 px-3 text-emerald-400 font-mono">${tel}</td>
+        <td class="py-2 px-3 text-sky-300 font-semibold">${lugar}</td>
+        <td class="py-2 px-3 text-slate-300">${pers}</td>
+        <td class="py-2 px-3 text-amber-300">${maq}</td>
+        <td class="py-2 px-3 text-slate-300 max-w-[200px] truncate" title="${ocurr}">${ocurr}</td>
+        <td class="py-2 px-3 text-center">
+          ${hasPhoto ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">📷 Foto</span>` : `<span class="text-slate-600 text-[10px]">--</span>`}
+        </td>
+        <td class="py-2 px-3 text-center">
+          <button class="px-2 py-1 rounded bg-sky-600/30 hover:bg-sky-600 text-sky-300 hover:text-white text-xs font-semibold transition" title="Ver en el mapa">
+            Ver
+          </button>
+        </td>
+      `;
+    } else {
+      const codigo = p.CODIGO || p.codigo || `#${index + 1}`;
+      const nombre = p.NOMBRE || p.nombre || p.LUGAR || p.lugar || p.Name || p.name || p.adm1_name || p.adm2_name || '-';
+      const seccion = p.SECCION || p.seccion || '-';
+      const tipo = p.TIPO_TRAB || p.tipo_trab || p.ZONAS || '-';
+      const resp = p.RESPONSABLE || p.responsable || '-';
+      const fechas = p.F_INICIO ? `${p.F_INICIO} → ${p.F_TERMINO || 'Actual'}` : (p.fecha_envio || '-');
 
-    tr.innerHTML = `
-      <td class="py-2 px-3 text-slate-500">${index + 1}</td>
-      <td class="py-2 px-3 font-semibold text-sky-400">${codigo}</td>
-      <td class="py-2 px-3 text-white font-medium">${nombre}</td>
-      <td class="py-2 px-3 text-slate-300">${seccion}</td>
-      <td class="py-2 px-3 text-slate-300 max-w-[200px] truncate" title="${tipo}">${tipo}</td>
-      <td class="py-2 px-3 text-slate-400">${resp}</td>
-      <td class="py-2 px-3 text-slate-400">${fechas}</td>
-      <td class="py-2 px-3 text-center">
-        <div class="inline-flex items-center space-x-1.5">
-          ${hasPhoto ? `<span title="Fotografía disponible" class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">📷 Foto</span>` : ''}
-          ${hasVideo ? `<span title="Video disponible" class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30">🎬 Video</span>` : ''}
-          ${!hasPhoto && !hasVideo ? `<span class="text-slate-600 text-[10px]">--</span>` : ''}
-        </div>
-      </td>
-      <td class="py-2 px-3 text-center">
-        <button class="px-2 py-1 rounded bg-sky-600/30 hover:bg-sky-600 text-sky-300 hover:text-white text-xs font-semibold transition" title="Ver en el mapa">
-          Ver
-        </button>
-      </td>
-    `;
+      const hasPhoto = Boolean(p.FOTO || p.foto || p.FOTO_2 || p.foto_2);
+      const hasVideo = Boolean(p.VIDEO || p.video);
+
+      tr.innerHTML = `
+        <td class="py-2 px-3 text-slate-500">${index + 1}</td>
+        <td class="py-2 px-3 font-semibold text-sky-400">${codigo}</td>
+        <td class="py-2 px-3 text-white font-medium">${nombre}</td>
+        <td class="py-2 px-3 text-slate-300">${seccion}</td>
+        <td class="py-2 px-3 text-slate-300 max-w-[200px] truncate" title="${tipo}">${tipo}</td>
+        <td class="py-2 px-3 text-slate-400">${resp}</td>
+        <td class="py-2 px-3 text-slate-400">${fechas}</td>
+        <td class="py-2 px-3 text-center">
+          <div class="inline-flex items-center space-x-1.5">
+            ${hasPhoto ? `<span title="Fotografía disponible" class="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">📷 Foto</span>` : ''}
+            ${hasVideo ? `<span title="Video disponible" class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30">🎬 Video</span>` : ''}
+            ${!hasPhoto && !hasVideo ? `<span class="text-slate-600 text-[10px]">--</span>` : ''}
+          </div>
+        </td>
+        <td class="py-2 px-3 text-center">
+          <button class="px-2 py-1 rounded bg-sky-600/30 hover:bg-sky-600 text-sky-300 hover:text-white text-xs font-semibold transition" title="Ver en el mapa">
+            Ver
+          </button>
+        </td>
+      `;
+    }
 
     tr.addEventListener('click', () => {
       if (onSelectFeatureCallback) {

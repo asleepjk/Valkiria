@@ -43,12 +43,23 @@ export async function initMap(containerId = 'viewDiv') {
     map: map,
     center: [18.6, 6.6], // Centro geométrico balanceado
     zoom: 6.8, // Escala para visión de conjunto y detalle
+    popupEnabled: false, // Control manual para abrir nuestro popup personalizado
     ui: {
       components: ['zoom', 'compass']
     }
   });
 
   await view.when();
+
+  if (view.popup) {
+    view.popup.dockOptions = {
+      buttonEnabled: false,
+      breakpoint: false
+    };
+    view.popup.visibleElements = {
+      closeButton: false
+    };
+  }
 
   // 1. Widgets Esri de Navegación Básica
   const homeWidget = new Home({ view: view });
@@ -206,55 +217,78 @@ async function loadVectorLayers() {
 
 function setupMapEvents() {
   view.on('click', async (event) => {
-    const response = await view.hitTest(event);
-    if (!response.results || response.results.length === 0) return;
+    try {
+      const response = await view.hitTest(event);
+      if (!response || !response.results || response.results.length === 0) {
+        if (view.popup) view.popup.close();
+        if (highlightGraphic) highlightGraphic.removeAll();
+        return;
+      }
 
-    const validResults = response.results.filter(
-      r => r.graphic && r.graphic.layer && r.graphic.layer !== highlightGraphic
-    );
-    if (validResults.length === 0) return;
+      // Filtrar resultados válidos (considera layer en r.layer o r.graphic.layer)
+      const validResults = response.results.filter(r => {
+        const layer = r.layer || (r.graphic && r.graphic.layer);
+        return layer && layer !== highlightGraphic;
+      });
 
-    // Priorizar puntos estrictamente sobre polígonos
-    validResults.sort((a, b) => {
-      const aGeom = a.graphic.geometry ? a.graphic.geometry.type : '';
-      const bGeom = b.graphic.geometry ? b.graphic.geometry.type : '';
+      if (validResults.length === 0) {
+        if (view.popup) view.popup.close();
+        if (highlightGraphic) highlightGraphic.removeAll();
+        return;
+      }
 
-      if (aGeom === 'point' && bGeom !== 'point') return -1;
-      if (bGeom === 'point' && aGeom !== 'point') return 1;
+      // Priorizar puntos estrictamente sobre polígonos
+      validResults.sort((a, b) => {
+        const aGeom = a.graphic && a.graphic.geometry ? a.graphic.geometry.type : '';
+        const bGeom = b.graphic && b.graphic.geometry ? b.graphic.geometry.type : '';
 
-      const aId = a.graphic.layer.id || '';
-      const bId = b.graphic.layer.id || '';
-      const isPriorityA = aId === 'ing' || aId === 'kouki' || aId === 'benzambe' || aId === 'live_submissions';
-      const isPriorityB = bId === 'ing' || bId === 'kouki' || bId === 'benzambe' || bId === 'live_submissions';
-      if (isPriorityA && !isPriorityB) return -1;
-      if (!isPriorityA && isPriorityB) return 1;
+        if (aGeom === 'point' && bGeom !== 'point') return -1;
+        if (bGeom === 'point' && aGeom !== 'point') return 1;
 
-      return 0;
-    });
+        const aLayer = a.layer || (a.graphic && a.graphic.layer);
+        const bLayer = b.layer || (b.graphic && b.graphic.layer);
+        const aId = (aLayer && aLayer.id) || '';
+        const bId = (bLayer && bLayer.id) || '';
 
-    const topHit = validResults[0];
-    const graphic = topHit.graphic;
-    const layer = graphic.layer;
-    const cfg = LAYERS_CONFIG.find(c => c.id === layer.id) || {};
+        const isPriorityA = aId === 'live_submissions' || aId === 'ing' || aId === 'kouki' || aId === 'benzambe';
+        const isPriorityB = bId === 'live_submissions' || bId === 'ing' || bId === 'kouki' || bId === 'benzambe';
+        if (isPriorityA && !isPriorityB) return -1;
+        if (!isPriorityA && isPriorityB) return 1;
 
-    const featureData = {
-      properties: graphic.attributes,
-      geometry: graphic.geometry,
-      category: cfg.category || (graphic.geometry.type === 'point' ? 'PUNTO OPERATIVO' : 'POLÍGONO'),
-      layerId: layer.id
-    };
+        return 0;
+      });
 
-    highlightFeature(graphic.geometry);
+      const topHit = validResults[0];
+      const graphic = topHit.graphic;
+      const layer = topHit.layer || (graphic && graphic.layer);
+      const layerId = layer ? layer.id : '';
+      const cfg = LAYERS_CONFIG.find(c => c.id === layerId) || {};
 
-    const popupContent = createCompactPopupContent(featureData, {
-      onPointUpdated: updateLivePointAttributes,
-      onPointDeleted: removeLivePointFromMap
-    });
+      const featureData = {
+        properties: graphic.attributes || {},
+        geometry: graphic.geometry,
+        category: cfg.category || (graphic.geometry && graphic.geometry.type === 'point' ? 'PUNTO OPERATIVO' : 'POLÍGONO'),
+        layerId: layerId
+      };
 
-    view.openPopup({
-      location: event.mapPoint || graphic.geometry,
-      content: popupContent
-    });
+      highlightFeature(graphic.geometry);
+
+      const popupContent = createCompactPopupContent(featureData, {
+        onPointUpdated: updateLivePointAttributes,
+        onPointDeleted: removeLivePointFromMap,
+        onClose: () => {
+          if (view.popup) view.popup.close();
+          if (highlightGraphic) highlightGraphic.removeAll();
+        }
+      });
+
+      view.popup.open({
+        location: event.mapPoint || graphic.geometry,
+        content: popupContent
+      });
+    } catch (err) {
+      console.error('Error al procesar clic en el mapa:', err);
+    }
   });
 }
 
@@ -323,9 +357,13 @@ export function zoomToFeature(feature) {
     highlightFeature(geom);
     const popupContent = createCompactPopupContent(feature, {
       onPointUpdated: updateLivePointAttributes,
-      onPointDeleted: removeLivePointFromMap
+      onPointDeleted: removeLivePointFromMap,
+      onClose: () => {
+        if (view.popup) view.popup.close();
+        if (highlightGraphic) highlightGraphic.removeAll();
+      }
     });
-    view.openPopup({
+    view.popup.open({
       location: geom,
       content: popupContent
     });
@@ -376,7 +414,11 @@ export function updateLivePointAttributes(id, updatedProps) {
       };
       const node = createCompactPopupContent(featureData, {
         onPointUpdated: updateLivePointAttributes,
-        onPointDeleted: removeLivePointFromMap
+        onPointDeleted: removeLivePointFromMap,
+        onClose: () => {
+          if (view.popup) view.popup.close();
+          if (highlightGraphic) highlightGraphic.removeAll();
+        }
       });
       view.popup.content = node;
     }
@@ -394,6 +436,9 @@ export function removeLivePointFromMap(id) {
   });
   toRemove.forEach(g => liveGraphicsLayer.remove(g));
 
+  if (view && view.popup && view.popup.visible) {
+    view.popup.close();
+  }
   if (highlightGraphic) highlightGraphic.removeAll();
 
   const liveStore = rawGeojsonStore['live_submissions'];

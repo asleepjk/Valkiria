@@ -4,11 +4,11 @@
  * Endpoint: https://www.idep.gob.pe/seguimiento/api/sync.php
  * Ubicación en Servidor: C:\inetpub\wwwroot\seguimiento\api\sync.php
  *
- * Soporta:
- * - GET: Health check seguro (cero divulgación de información).
- * - POST normal / action=upsert: Inserción y actualización de reportes de campo.
- * - POST action=delete: Eliminación segura de reportes por ID.
- * - Persistencia fotográfica directa en base de datos (foto_base64 y foto_blob) + caché en disco.
+ * Operaciones:
+ * - GET: Health check seguro (status: ok).
+ * - POST action=update / edit: Actualización directa de los 6 campos del reporte.
+ * - POST action=delete / DELETE: Eliminación segura del reporte por ID.
+ * - POST action=upsert (por defecto): Sincronización completa de nuevo punto / actualización APK.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -102,7 +102,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DEL
     }
 
     // -------------------------------------------------------------
-    // ACCIÓN 2: GUARDAR / EDITAR REPORTE (UPSERT)
+    // ACCIÓN 2: ACTUALIZAR REPORTE EXISTENTE (action == 'update' / 'edit')
+    // -------------------------------------------------------------
+    if ($action === 'update' || $action === 'edit') {
+        $jefeTob     = isset($payload['jefe_tob']) ? trim($payload['jefe_tob']) : '';
+        $telefono    = isset($payload['telefono']) ? trim($payload['telefono']) : '';
+        $lugarMision = isset($payload['lugar_mision']) ? trim($payload['lugar_mision']) : '';
+        $personal    = isset($payload['personal']) ? trim($payload['personal']) : (isset($payload['persona']) ? trim($payload['persona']) : '');
+        $maquinaria  = isset($payload['maquinaria']) ? trim($payload['maquinaria']) : '';
+        $ocurrencias = isset($payload['ocurrencias']) ? trim($payload['ocurrencias']) : '';
+
+        $sqlUpdate = "UPDATE [dbo].[valkiria_reportes] 
+                      SET jefe_tob = ?, 
+                          telefono = ?, 
+                          lugar_mision = ?, 
+                          personal = ?, 
+                          maquinaria = ?, 
+                          ocurrencias = ? 
+                      WHERE id = ?";
+
+        $paramsUpdate = array($jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias, $id);
+        $stmtUpd = @sqlsrv_query($conn, $sqlUpdate, $paramsUpdate);
+
+        if ($stmtUpd === false) {
+            http_response_code(500);
+            echo json_encode(array("success" => false, "message" => "Error al actualizar el reporte"), JSON_UNESCAPED_UNICODE);
+            @sqlsrv_close($conn);
+            exit;
+        }
+
+        @sqlsrv_close($conn);
+        http_response_code(200);
+        echo json_encode(array(
+            "success" => true,
+            "id" => $id,
+            "message" => "Reporte actualizado correctamente."
+        ), JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // -------------------------------------------------------------
+    // ACCIÓN 3: UPSERT COMPLETO (Sincronización inicial desde APK)
     // -------------------------------------------------------------
     $jefeTob     = isset($payload['jefe_tob']) ? trim($payload['jefe_tob']) : '';
     $telefono    = isset($payload['telefono']) ? trim($payload['telefono']) : '';
@@ -120,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DEL
     $dms         = isset($coords['dms']) ? trim($coords['dms']) : '';
     $ipOrigen    = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
 
-    // Procesamiento fotográfico: Guardar tanto en SQL Server como en disco si es posible
+    // Procesamiento fotográfico
     $fotoPath = null;
     $fotoBase64 = null;
     $fotoBlob = null;
@@ -143,56 +183,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DEL
         $fotoPath = trim($payload['foto_path']);
     }
 
-    // MERGE atómico en SQL Server: Soporta inserción y actualización
-    $sqlMerge = "
-        MERGE INTO [dbo].[valkiria_reportes] AS target
-        USING (SELECT ? AS id) AS source
-        ON (target.id = source.id)
-        WHEN MATCHED THEN
-            UPDATE SET 
-                jefe_tob = ?,
-                telefono = ?,
-                lugar_mision = ?,
-                personal = ?,
-                maquinaria = ?,
-                ocurrencias = ?,
-                latitud = CASE WHEN ? <> 0 THEN ? ELSE target.latitud END,
-                longitud = CASE WHEN ? <> 0 THEN ? ELSE target.longitud END,
-                altitud = CASE WHEN ? <> 0 THEN ? ELSE target.altitud END,
-                precision_m = CASE WHEN ? <> 0 THEN ? ELSE target.precision_m END,
-                dms = COALESCE(NULLIF(?, ''), target.dms),
-                foto_path = COALESCE(?, target.foto_path),
-                foto_base64 = COALESCE(?, target.foto_base64),
-                foto_blob = COALESCE(?, target.foto_blob),
-                ip_origen = ?
-        WHEN NOT MATCHED THEN
-            INSERT (id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurrencias, latitud, longitud, altitud, precision_m, dms, foto_path, foto_base64, foto_blob, fecha_registro, ip_origen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), ?);
-    ";
+    // Verificar si ya existe el ID para decidir entre UPDATE o INSERT
+    $sqlCheck = "SELECT COUNT(1) AS total FROM [dbo].[valkiria_reportes] WHERE id = ?";
+    $stmtCheck = @sqlsrv_query($conn, $sqlCheck, array($id));
+    $exists = false;
+    if ($stmtCheck !== false && $rowCheck = @sqlsrv_fetch_array($stmtCheck, SQLSRV_FETCH_ASSOC)) {
+        $exists = intval($rowCheck['total']) > 0;
+    }
 
-    $params = array(
-        // UPDATE params
-        $id,
-        $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
-        $latitud, $latitud,
-        $longitud, $longitud,
-        $altitud, $altitud,
-        $precisionM, $precisionM,
-        $dms,
-        $fotoPath,
-        $fotoBase64,
-        $fotoBlob,
-        $ipOrigen,
+    if ($exists) {
+        $sqlUpdateAll = "UPDATE [dbo].[valkiria_reportes] 
+                         SET jefe_tob = ?, telefono = ?, lugar_mision = ?, personal = ?, maquinaria = ?, ocurrencias = ?,
+                             latitud = CASE WHEN ? <> 0 THEN ? ELSE latitud END,
+                             longitud = CASE WHEN ? <> 0 THEN ? ELSE longitud END,
+                             altitud = CASE WHEN ? <> 0 THEN ? ELSE altitud END,
+                             precision_m = CASE WHEN ? <> 0 THEN ? ELSE precision_m END,
+                             dms = COALESCE(NULLIF(?, ''), dms),
+                             foto_path = COALESCE(?, foto_path),
+                             foto_base64 = COALESCE(?, foto_base64),
+                             ip_origen = ?
+                         WHERE id = ?";
+        $paramsUpd = array(
+            $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
+            $latitud, $latitud,
+            $longitud, $longitud,
+            $altitud, $altitud,
+            $precisionM, $precisionM,
+            $dms,
+            $fotoPath,
+            $fotoBase64,
+            $ipOrigen,
+            $id
+        );
+        $stmt = @sqlsrv_query($conn, $sqlUpdateAll, $paramsUpd);
+    } else {
+        $sqlInsert = "INSERT INTO [dbo].[valkiria_reportes] 
+                      (id, jefe_tob, telefono, lugar_mision, personal, maquinaria, ocurrencias, 
+                       latitud, longitud, altitud, precision_m, dms, foto_path, foto_base64, fecha_registro, ip_origen)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), ?)";
+        $paramsIns = array(
+            $id, $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
+            $latitud, $longitud, $altitud, $precisionM, $dms, $fotoPath, $fotoBase64, $ipOrigen
+        );
+        $stmt = @sqlsrv_query($conn, $sqlInsert, $paramsIns);
+    }
 
-        // INSERT params
-        $id,
-        $jefeTob, $telefono, $lugarMision, $personal, $maquinaria, $ocurrencias,
-        $latitud, $longitud, $altitud, $precisionM, $dms,
-        $fotoPath, $fotoBase64, $fotoBlob,
-        $ipOrigen
-    );
-
-    $stmt = @sqlsrv_query($conn, $sqlMerge, $params);
     if ($stmt === false) {
         http_response_code(500);
         echo json_encode(array(
@@ -201,6 +236,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DEL
         ), JSON_UNESCAPED_UNICODE);
         @sqlsrv_close($conn);
         exit;
+    }
+
+    // Actualizar foto binaria si fue proporcionada
+    if ($fotoBlob !== null) {
+        $sqlBlob = "UPDATE [dbo].[valkiria_reportes] SET foto_blob = ? WHERE id = ?";
+        $paramBlob = array(
+            array($fotoBlob, SQLSRV_PARAM_IN, SQLSRV_PHPTYPE_STREAM(SQLSRV_ENC_BINARY), SQLSRV_SQLTYPE_VARBINARY('max')),
+            $id
+        );
+        @sqlsrv_query($conn, $sqlBlob, $paramBlob);
     }
 
     @sqlsrv_close($conn);

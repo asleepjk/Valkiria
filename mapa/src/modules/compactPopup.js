@@ -1,6 +1,6 @@
 /**
  * Ventana Emergente Táctica Compacta para ArcGIS Maps SDK
- * Diseño denso y optimizado (~320px) que se ancla directamente a las geometrías clicadas.
+ * Diseño denso y optimizado con tipografía de alto contraste y tamaño aumentado (13px - 14px).
  * Los campos se presentan en el orden exacto del aplicativo móvil Valkiria.
  */
 
@@ -10,26 +10,27 @@ import { openLightbox } from './mediaDrawer.js';
 
 const SYNC_API_URL = 'https://www.idep.gob.pe/seguimiento/api/sync.php';
 
-export function createCompactPopupContent(featureData, { onPointUpdated, onPointDeleted } = {}) {
+export function createCompactPopupContent(featureData, { onPointUpdated, onPointDeleted, onClose } = {}) {
   const props = featureData.properties || {};
   const isValkiria = featureData.layerId === 'live_submissions' || Boolean(props.JEFE_TOB || props.jefe_tob);
 
   const container = document.createElement('div');
-  container.className = 'valkiria-compact-popup font-sans text-slate-200 select-text';
-  container.style.maxWidth = '320px';
-  container.style.fontSize = '11px';
-  container.style.lineHeight = '1.4';
+  container.className = 'valkiria-compact-popup font-sans text-slate-100 select-text';
+  container.style.maxWidth = '360px';
+  container.style.minWidth = '320px';
+  container.style.fontSize = '13px';
+  container.style.lineHeight = '1.45';
 
   if (isValkiria) {
-    renderValkiriaContent(container, featureData, { onPointUpdated, onPointDeleted });
+    renderValkiriaContent(container, featureData, { onPointUpdated, onPointDeleted, onClose });
   } else {
-    renderGenericContent(container, featureData);
+    renderGenericContent(container, featureData, { onClose });
   }
 
   return container;
 }
 
-function renderValkiriaContent(container, featureData, { onPointUpdated, onPointDeleted }) {
+function renderValkiriaContent(container, featureData, { onPointUpdated, onPointDeleted, onClose }) {
   const p = featureData.properties || {};
   const reportId = p.CODIGO || p.codigo || p.id || 'VAL-CAMPO';
 
@@ -48,103 +49,123 @@ function renderValkiriaContent(container, featureData, { onPointUpdated, onPoint
   const fecha       = p.FECHA || p.fecha || p.fecha_envio || '-';
 
   container.innerHTML = `
-    <div class="space-y-2.5">
-      <!-- Barra Superior: ID y Botones de Acción -->
-      <div class="flex items-center justify-between pb-1.5 border-b border-slate-700/80">
-        <div class="flex items-center space-x-1.5">
-          <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+    <div class="space-y-3">
+      <!-- Barra Superior: ID, Botones de Acción y Botón Cerrar -->
+      <div class="flex items-center justify-between pb-2 border-b border-slate-700">
+        <div class="flex items-center space-x-2">
+          <span class="px-2 py-0.5 rounded text-xs font-black bg-rose-600 text-white tracking-wider shadow-sm">
             VALKIRIA
           </span>
-          <span class="font-mono text-[11px] font-bold text-sky-400 truncate max-w-[130px]" title="${escapeHtml(reportId)}">
+          <span class="font-mono text-sm font-bold text-sky-300 truncate max-w-[130px]" title="${escapeHtml(reportId)}">
             ${escapeHtml(reportId)}
           </span>
         </div>
 
-        <div class="flex items-center space-x-1">
-          <button type="button" id="popup-btn-edit" class="p-1 px-1.5 rounded bg-slate-800 hover:bg-sky-600 hover:text-white text-slate-300 transition text-[10px] flex items-center space-x-1 border border-slate-700" title="Editar punto (Requiere contraseña)">
-            <svg class="w-3 h-3 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+        <div class="flex items-center space-x-1.5">
+          <button type="button" id="popup-btn-edit" class="p-1 px-2 rounded-md bg-sky-600 hover:bg-sky-500 text-white font-bold transition text-xs flex items-center space-x-1 shadow-sm" title="Editar punto (Requiere credenciales)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
             </svg>
             <span>Editar</span>
           </button>
-          <button type="button" id="popup-btn-delete" class="p-1 px-1.5 rounded bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-300 transition text-[10px] flex items-center space-x-1 border border-slate-700" title="Eliminar punto (Requiere contraseña)">
-            <svg class="w-3 h-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          <button type="button" id="popup-btn-delete" class="p-1 px-2 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-bold transition text-xs flex items-center space-x-1 shadow-sm" title="Eliminar punto (Requiere credenciales)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
             <span>Quitar</span>
+          </button>
+          <button type="button" id="popup-btn-close" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center transition border border-slate-600 ml-1" title="Cerrar ventana">
+            ✕
           </button>
         </div>
       </div>
 
-      <!-- CAMPOS EN EL ORDEN EXACTO DEL APLICATIVO MÓVIL -->
-      <div class="space-y-1.5 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80">
+      <!-- CAMPOS EN EL ORDEN EXACTO DEL APLICATIVO MÓVIL (Alto contraste y mayor tamaño) -->
+      <div class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-700">
         <!-- 1. Jefe de TOB -->
-        <div class="flex items-start justify-between">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold">1. Jefe TOB:</span>
-          <span class="font-bold text-white text-right max-w-[180px] truncate">${escapeHtml(jefeTob)}</span>
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider shrink-0">1. Jefe TOB:</span>
+          <span class="font-extrabold text-white text-sm text-right leading-tight max-w-[200px] truncate" title="${escapeHtml(jefeTob)}">
+            ${escapeHtml(jefeTob)}
+          </span>
         </div>
 
         <!-- 2. Teléfono -->
-        <div class="flex items-start justify-between">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold">2. Teléfono:</span>
-          <span class="font-mono text-emerald-400 text-right">${escapeHtml(telefono)}</span>
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider shrink-0">2. Teléfono:</span>
+          <span class="font-mono font-bold text-emerald-300 text-sm text-right">${escapeHtml(telefono)}</span>
         </div>
 
         <!-- 3. Lugar de Misión -->
-        <div class="flex items-start justify-between">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold">3. Lugar:</span>
-          <span class="font-semibold text-sky-300 text-right max-w-[180px] truncate">${escapeHtml(lugarMision)}</span>
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider shrink-0">3. Lugar:</span>
+          <span class="font-bold text-sky-300 text-sm text-right leading-tight max-w-[200px] truncate" title="${escapeHtml(lugarMision)}">
+            ${escapeHtml(lugarMision)}
+          </span>
         </div>
 
         <!-- 4. Personal -->
-        <div class="flex items-start justify-between">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold">4. Personal:</span>
-          <span class="text-slate-200 text-right max-w-[180px] truncate">${escapeHtml(personal)}</span>
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider shrink-0">4. Personal:</span>
+          <span class="font-semibold text-white text-sm text-right leading-tight max-w-[200px] truncate" title="${escapeHtml(personal)}">
+            ${escapeHtml(personal)}
+          </span>
         </div>
 
         <!-- 5. Maquinaria -->
-        <div class="flex items-start justify-between">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold">5. Maquinaria:</span>
-          <span class="text-amber-300 text-right max-w-[180px] truncate">${escapeHtml(maquinaria)}</span>
+        <div class="flex items-start justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider shrink-0">5. Maquinaria:</span>
+          <span class="font-bold text-amber-300 text-sm text-right leading-tight max-w-[200px] truncate" title="${escapeHtml(maquinaria)}">
+            ${escapeHtml(maquinaria)}
+          </span>
         </div>
 
         <!-- 6. Ocurrencias -->
-        <div class="pt-1 border-t border-slate-850">
-          <span class="text-slate-400 text-[10px] uppercase font-semibold block mb-0.5">6. Ocurrencias:</span>
-          <p class="text-slate-200 text-[10px] bg-slate-900/90 p-1.5 rounded-lg border border-slate-800 max-h-16 overflow-y-auto custom-scrollbar italic leading-tight">
+        <div class="pt-1">
+          <span class="text-slate-300 text-xs uppercase font-bold tracking-wider block mb-1">6. Ocurrencias:</span>
+          <div class="text-white text-xs bg-slate-900 p-2.5 rounded-lg border border-slate-700/80 max-h-24 overflow-y-auto custom-scrollbar leading-relaxed select-text">
             ${escapeHtml(ocurrencias)}
-          </p>
+          </div>
         </div>
       </div>
 
       <!-- 7. Evidencia Fotográfica -->
       ${photoUrl ? `
-        <div class="relative group cursor-pointer overflow-hidden rounded-xl border border-slate-700 bg-black/60 h-28 flex items-center justify-center" id="popup-photo-card">
+        <div class="relative group cursor-pointer overflow-hidden rounded-xl border border-slate-600 bg-black h-36 flex items-center justify-center shadow-inner" id="popup-photo-card">
           <img src="${photoUrl}" alt="Evidencia de campo" class="w-full h-full object-cover transition duration-300 group-hover:scale-105"
             onerror="this.onerror=null; this.src='https://www.idep.gob.pe/seguimiento/api/foto.php?id=${encodeURIComponent(reportId)}';" />
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-1">
-            <span class="px-2 py-1 rounded bg-black/70 text-white text-[10px] font-bold">🔍 Ampliar Foto</span>
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <span class="px-2.5 py-1 rounded bg-black/80 text-white text-xs font-bold border border-slate-600 shadow">🔍 Ampliar Foto</span>
           </div>
         </div>
       ` : ''}
 
       <!-- Telemetría GPS -->
-      <div class="bg-slate-950/90 p-2 rounded-lg border border-slate-800 font-mono text-[9px] text-slate-400 space-y-0.5">
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-700 font-mono text-xs text-slate-200 space-y-1">
         <div class="flex justify-between">
-          <span>DMS:</span>
-          <span class="text-slate-300">${escapeHtml(dms)}</span>
+          <span class="text-slate-400">DMS:</span>
+          <span class="text-sky-300 font-semibold">${escapeHtml(dms)}</span>
         </div>
         <div class="flex justify-between">
-          <span>Altitud / Precisión:</span>
-          <span class="text-slate-300">${escapeHtml(altitud)} | ${escapeHtml(precision)}</span>
+          <span class="text-slate-400">Altitud / Precisión:</span>
+          <span class="text-emerald-300 font-semibold">${escapeHtml(altitud)} | ${escapeHtml(precision)}</span>
         </div>
         <div class="flex justify-between">
-          <span>Fecha:</span>
-          <span class="text-slate-400">${escapeHtml(fecha)}</span>
+          <span class="text-slate-400">Fecha:</span>
+          <span class="text-slate-300">${escapeHtml(fecha)}</span>
         </div>
       </div>
     </div>
   `;
+
+  // Evento Cerrar
+  const btnClose = container.querySelector('#popup-btn-close');
+  if (btnClose && onClose) {
+    btnClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClose();
+    });
+  }
 
   // Evento Ampliar Foto
   const photoCard = container.querySelector('#popup-photo-card');
@@ -177,7 +198,7 @@ function renderValkiriaContent(container, featureData, { onPointUpdated, onPoint
   }
 }
 
-function renderGenericContent(container, featureData) {
+function renderGenericContent(container, featureData, { onClose } = {}) {
   const p = featureData.properties || {};
   const cat = featureData.category || 'ELEMENTO';
   const title = p.NOMBRE || p.nombre || p.LUGAR || p.Name || p.adm1_name || p.adm2_name || 'Geometría';
@@ -190,30 +211,41 @@ function renderGenericContent(container, featureData) {
     const val = p[k];
     if (val !== null && val !== undefined && String(val).trim() !== '') {
       rowsHtml += `
-        <div class="flex justify-between py-0.5 border-b border-slate-800/60 last:border-0">
-          <span class="text-slate-400 text-[10px] truncate max-w-[110px]">${escapeHtml(k)}:</span>
-          <span class="text-slate-200 text-right truncate max-w-[170px] font-medium">${escapeHtml(String(val))}</span>
+        <div class="flex justify-between py-1 border-b border-slate-800 last:border-0 gap-2">
+          <span class="text-slate-300 text-xs font-semibold truncate max-w-[130px]">${escapeHtml(k)}:</span>
+          <span class="text-white text-xs font-bold text-right truncate max-w-[190px]">${escapeHtml(String(val))}</span>
         </div>
       `;
     }
   });
 
   container.innerHTML = `
-    <div class="space-y-2">
-      <div class="flex items-center justify-between pb-1 border-b border-slate-700">
-        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+    <div class="space-y-3">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-700">
+        <span class="px-2 py-0.5 rounded text-xs font-extrabold bg-sky-600 text-white shadow-sm">
           ${escapeHtml(cat)}
         </span>
-        <h4 class="font-bold text-white text-xs truncate max-w-[200px]" title="${escapeHtml(title)}">
+        <h4 class="font-bold text-white text-sm truncate max-w-[200px]" title="${escapeHtml(title)}">
           ${escapeHtml(title)}
         </h4>
+        <button type="button" id="popup-btn-close-gen" class="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center transition border border-slate-600 ml-1" title="Cerrar ventana">
+          ✕
+        </button>
       </div>
 
-      <div class="bg-slate-950/80 p-2 rounded-lg border border-slate-800 max-h-48 overflow-y-auto custom-scrollbar space-y-0.5">
-        ${rowsHtml || '<span class="text-slate-500 text-[10px]">Sin atributos adicionales.</span>'}
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-700 max-h-56 overflow-y-auto custom-scrollbar space-y-1">
+        ${rowsHtml || '<span class="text-slate-400 text-xs">Sin atributos adicionales.</span>'}
       </div>
     </div>
   `;
+
+  const btnClose = container.querySelector('#popup-btn-close-gen');
+  if (btnClose && onClose) {
+    btnClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClose();
+    });
+  }
 }
 
 // ==========================================
@@ -230,69 +262,69 @@ function openEditPointModal(featureData, onPointUpdated) {
   modal.id = 'tactical-edit-modal';
   modal.className = 'fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in';
   modal.innerHTML = `
-    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden text-slate-100 flex flex-col">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden text-slate-100 flex flex-col">
       <!-- Header -->
-      <div class="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <span class="p-1.5 rounded-lg bg-sky-500/20 text-sky-400">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="px-5 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <span class="p-2 rounded-lg bg-sky-500/20 text-sky-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
           </span>
           <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-white">Editar Reporte ${escapeHtml(reportId)}</h3>
-            <p class="text-[10px] text-slate-400">Modificación de datos operativos en producción</p>
+            <h3 class="text-sm font-bold uppercase tracking-wider text-white">Editar Reporte ${escapeHtml(reportId)}</h3>
+            <p class="text-xs text-slate-400">Modificación de datos operativos en producción</p>
           </div>
         </div>
-        <button id="edit-modal-close" class="text-slate-400 hover:text-white p-1 text-sm">✕</button>
+        <button id="edit-modal-close" class="text-slate-400 hover:text-white p-1 text-base font-bold">✕</button>
       </div>
 
-      <!-- Form Body (6 Campos Operativos) -->
-      <form id="edit-point-form" class="p-5 space-y-3 text-xs overflow-y-auto max-h-[70vh]">
-        <div class="grid grid-cols-2 gap-3">
+      <!-- Form Body (6 Campos Operativos con tipografía de alto contraste) -->
+      <form id="edit-point-form" class="p-5 space-y-3.5 text-xs overflow-y-auto max-h-[70vh]">
+        <div class="grid grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-slate-400 font-semibold mb-1">1. Jefe de TOB:</label>
+            <label class="block text-slate-200 font-bold mb-1">1. Jefe de TOB:</label>
             <input id="edit-jefe" type="text" value="${escapeHtml(p.JEFE_TOB || p.jefe_tob || '')}" required
-              class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none"/>
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-semibold text-sm focus:border-sky-400 focus:outline-none"/>
           </div>
           <div>
-            <label class="block text-slate-400 font-semibold mb-1">2. Teléfono:</label>
+            <label class="block text-slate-200 font-bold mb-1">2. Teléfono:</label>
             <input id="edit-tel" type="text" value="${escapeHtml(p.TELEFONO || p.telefono || '')}" required
-              class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none"/>
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-mono text-sm focus:border-sky-400 focus:outline-none"/>
           </div>
         </div>
 
         <div>
-          <label class="block text-slate-400 font-semibold mb-1">3. Lugar de Misión:</label>
+          <label class="block text-slate-200 font-bold mb-1">3. Lugar de Misión:</label>
           <input id="edit-lugar" type="text" value="${escapeHtml(p.LUGAR || p.lugar || '')}" required
-            class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none"/>
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-semibold text-sm focus:border-sky-400 focus:outline-none"/>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-slate-400 font-semibold mb-1">4. Personal:</label>
+            <label class="block text-slate-200 font-bold mb-1">4. Personal:</label>
             <input id="edit-pers" type="text" value="${escapeHtml(p.PERSONAL || p.personal || '')}" required
-              class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none"/>
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-semibold text-sm focus:border-sky-400 focus:outline-none"/>
           </div>
           <div>
-            <label class="block text-slate-400 font-semibold mb-1">5. Maquinaria:</label>
+            <label class="block text-slate-200 font-bold mb-1">5. Maquinaria:</label>
             <input id="edit-maq" type="text" value="${escapeHtml(p.MAQUINARIA || p.maquinaria || '')}" required
-              class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none"/>
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white font-semibold text-sm focus:border-sky-400 focus:outline-none"/>
           </div>
         </div>
 
         <div>
-          <label class="block text-slate-400 font-semibold mb-1">6. Ocurrencias:</label>
+          <label class="block text-slate-200 font-bold mb-1">6. Ocurrencias:</label>
           <textarea id="edit-ocurr" rows="3" required
-            class="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-sky-500 focus:outline-none">${escapeHtml(p.OCURRENCIAS || p.ocurrencias || '')}</textarea>
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm focus:border-sky-400 focus:outline-none leading-relaxed">${escapeHtml(p.OCURRENCIAS || p.ocurrencias || '')}</textarea>
         </div>
 
-        <!-- Botones -->
-        <div class="pt-3 border-t border-slate-800 flex items-center justify-end space-x-2">
-          <button type="button" id="edit-btn-cancel" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition">
+        <!-- Botones de Acción -->
+        <div class="pt-4 border-t border-slate-800 flex items-center justify-end space-x-3">
+          <button type="button" id="edit-btn-cancel" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition">
             Cancelar
           </button>
-          <button type="submit" id="edit-btn-submit" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition flex items-center space-x-1 shadow-md shadow-sky-950">
+          <button type="submit" id="edit-btn-submit" class="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition flex items-center space-x-1.5 shadow-md shadow-sky-950">
             <span>Guardar Cambios</span>
           </button>
         </div>
@@ -331,7 +363,11 @@ function openEditPointModal(featureData, onPointUpdated) {
         body: JSON.stringify(updatedProps)
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
 
       showAuthToast(`✓ Reporte ${reportId} actualizado en producción`, 'success');
       close();
@@ -361,24 +397,24 @@ function confirmDeletePoint(reportId, featureData, onPointDeleted) {
   modal.innerHTML = `
     <div class="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-slate-100 flex flex-col">
       <div class="p-5 text-center space-y-3">
-        <div class="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
+        <div class="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/40">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
         </div>
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider">¿Eliminar Reporte de Campo?</h3>
-        <p class="text-xs text-slate-400">
-          Se eliminará permanentemente el reporte <strong class="text-rose-400 font-mono">${escapeHtml(reportId)}</strong> de la base de datos de producción y del mapa.
+        <h3 class="text-base font-bold text-white">¿Eliminar punto de misión?</h3>
+        <p class="text-xs text-slate-300">
+          Esta acción eliminará de forma irreversible el reporte <strong class="text-rose-400 font-mono">${escapeHtml(reportId)}</strong> de la base de datos de producción y del mapa.
         </p>
+      </div>
 
-        <div class="pt-2 flex items-center justify-center space-x-3">
-          <button type="button" id="delete-btn-cancel" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition">
-            Cancelar
-          </button>
-          <button type="button" id="delete-btn-confirm" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition shadow-lg shadow-rose-950">
-            Confirmar Eliminación
-          </button>
-        </div>
+      <div class="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-end space-x-3">
+        <button type="button" id="delete-btn-cancel" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition">
+          Cancelar
+        </button>
+        <button type="button" id="delete-btn-confirm" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition flex items-center space-x-1 shadow-md shadow-rose-950">
+          <span>Sí, Eliminar</span>
+        </button>
       </div>
     </div>
   `;
@@ -388,8 +424,8 @@ function confirmDeletePoint(reportId, featureData, onPointDeleted) {
   const close = () => modal.remove();
   modal.querySelector('#delete-btn-cancel').addEventListener('click', close);
 
-  modal.querySelector('#delete-btn-confirm').addEventListener('click', async () => {
-    const confirmBtn = modal.querySelector('#delete-btn-confirm');
+  const confirmBtn = modal.querySelector('#delete-btn-confirm');
+  confirmBtn.addEventListener('click', async () => {
     confirmBtn.disabled = true;
     confirmBtn.textContent = 'Eliminando...';
 
@@ -397,12 +433,19 @@ function confirmDeletePoint(reportId, featureData, onPointDeleted) {
       const res = await fetch(SYNC_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id: reportId })
+        body: JSON.stringify({
+          action: 'delete',
+          id: reportId
+        })
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(() => ({}));
 
-      showAuthToast(`✓ Reporte ${reportId} eliminado con éxito`, 'success');
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+
+      showAuthToast(`✓ Reporte ${reportId} eliminado del servidor`, 'success');
       close();
 
       if (onPointDeleted) {
@@ -412,12 +455,17 @@ function confirmDeletePoint(reportId, featureData, onPointDeleted) {
       console.error('Error al eliminar:', err);
       showAuthToast(`Error al eliminar: ${err.message}`, 'danger');
       confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirmar Eliminación';
+      confirmBtn.textContent = 'Sí, Eliminar';
     }
   });
 }
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
